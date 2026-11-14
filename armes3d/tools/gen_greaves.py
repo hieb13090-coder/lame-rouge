@@ -85,8 +85,8 @@ def fins():
     for sgn in (1, -1):
         n = 18
         t = np.linspace(0, 1, n)
-        path = np.stack([np.full(n, sgn * 0.104), -0.150 - 0.030 * t, -0.092 - 0.095 * t], -1)
-        out += sweep(path, taper_profile(n, 0.055, 0.25, 1.2), np.full(n, 0.0042), C=12, vscale=0.05, power=2.4, up=(0, 1, 0), caps=(True, True))
+        path = np.stack([np.full(n, sgn * 0.106), -0.095 - 0.040 * t, -0.092 - 0.050 * t], -1)
+        out += sweep(path, taper_profile(n, 0.030, 0.008, 1.0), np.full(n, 0.0040), C=12, vscale=0.05, power=2.4, up=(0, 1, 0), caps=(True, True))
     return out
 
 
