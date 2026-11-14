@@ -3,6 +3,7 @@ Poing fermé massif entièrement blindé : phalanges en lames d'acier sombre, ga
 large brassard à lames avec panneau d'écailles de dragon, noyau lumineux braise, crête d'épines. Les cornes de jointures (HORNS) et la griffe (CLAW) sont codées mais désactivées.
 Repère : poing vers +Z, dos de la main +Y, pouce +X (droite), avant-bras vers -Z, origine = centre du poing. Taille ~0,5 m, poing ~0,2 m de large.
 Usage : python3 gen_dragon_gauntlets.py <dossier>"""
+import os
 import sys
 from pathlib import Path
 
@@ -230,13 +231,20 @@ def plain_metal(seed, rgb, rough, metal=0.95, S=256, grain=0.05):
     return dict(base=Image.fromarray((base * 255).astype(np.uint8)), mr=Image.fromarray((mr * 255).astype(np.uint8)), normal=Image.fromarray(nm))
 
 
+SKIN = os.environ.get("GAUNTLET_SKIN", "metal")   # "metal" : tout en acier (défaut) ; "dragon" : écailles cramoisies + or (skin gardé pour une série de skins)
+
+
 def build(out):
     seed = 101
     from PIL import Image, ImageEnhance
     from PIL import Image  # noqa: F401
     leather_tex = plain_metal(seed, (0.06, 0.06, 0.065), 0.62, metal=0.85, grain=0.15)   # sous-couche : maille sombre
-    scale_tex = NT.dragon_scale_textures(seed + 1, cells=12)
-    gold_tex = NT.gilt_textures(seed + 2, tint=(0.86, 0.62, 0.20))
+    if SKIN == "dragon":
+        scale_tex = NT.dragon_scale_textures(seed + 1, cells=12)
+        gold_tex = NT.gilt_textures(seed + 2, tint=(0.86, 0.62, 0.20))
+    else:                                       # tout métal : lames en acier gris-bleu sombre, pièces d'accent en acier clair poli
+        scale_tex = plain_metal(seed + 1, (0.20, 0.21, 0.24), 0.30, metal=0.97, grain=0.08)
+        gold_tex = plain_metal(seed + 2, (0.62, 0.64, 0.68), 0.20, metal=1.0, grain=0.04)
     armor_tex = plain_metal(seed + 3, (0.34, 0.35, 0.38), 0.27, metal=0.97, grain=0.06)   # acier sombre poli
     th_leather, th_gold = thumb()
     under, lames, cscales, cglow = cuff_parts()
@@ -257,7 +265,8 @@ def build(out):
             if side == "L":
                 parts = [(P * np.array([-1, 1, 1]), UV, F[:, ::-1]) for P, UV, F in parts]
             m[name] = (parts, crease, mat)
-        kit.assemble(out / f"dragon_gauntlet_{side}_hd.glb", m)
+        name = f"dragon_gauntlet_{side}_hd.glb" if SKIN == "dragon" else f"gauntlet_{side}_hd.glb"
+        kit.assemble(out / name, m)
 
 
 if __name__ == "__main__":
