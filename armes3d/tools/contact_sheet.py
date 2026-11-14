@@ -8,7 +8,7 @@ LIST = [("Katana « Yugiri »", "katana_hero"), ("Épée longue « Aurore »", "
         ("Épée volante « Plume »", "flying_sword_hero"), ("Dague « Vipère »", "dagger_hero"),
         ("Couteau « Éclat »", "knife_hero"), ("Marteau « Brise-Monts »", "hammer_hero"),
         ("Hache « Fendeur »", "axe_hero"), ("Naginata « Tsukikage »", "naginata_hero"),
-        ("Bô « Gardien »", "bo_hero"), ("Gantelet « Poings-Wyrm »", "gauntlet_R_hero")]
+        ("Bô « Gardien »", "bo_hero"), ("Gantelet « Poings-Wyrm »", "gauntlet_metal_R_hero"), ("Jambière « Tourbillon »", "greaves_hero"), ("Bouclier « Rempart »", "shield_front")]
 CW, CH, COLS = 420, 460, 4
 
 
