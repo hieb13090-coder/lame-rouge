@@ -1,0 +1,7 @@
+node_modules/
+dist/
+test/index.html
+test/code.js
+test/vendor/
+shots/
+*.log

@@ -1,0 +1,20 @@
+const { chromium, devices } = require('/opt/npm-tools/node_modules/playwright');
+(async () => {
+  const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
+  const ctx = await b.newContext({ ...devices['iPhone 13'] }); const p = await ctx.newPage(); const errs = [];
+  p.on('console', m => { if (m.type() === 'error') errs.push(m.text().slice(0, 300)); });
+  p.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+  await p.goto('file://' + __dirname + '/index.html'); await p.waitForTimeout(1800);
+  const menu = await p.evaluate(() => { const r = document.getElementById('m-armor').getBoundingClientRect(); return 'menu : sélecteur d\'armure ' + Math.round(r.width) + ' px de large, déborde=' + (document.documentElement.scrollWidth > innerWidth + 1) + ' boutons ' + [...document.querySelectorAll('#m-armor button')].map(x => Math.round(x.getBoundingClientRect().width) + 'x' + Math.round(x.getBoundingClientRect().height)).join(' '); });
+  console.log(menu);
+  await p.screenshot({ path: __dirname + '/../shots/p0_menu.png', timeout: 90000 }).catch(() => console.log('shot fail'));
+  await p.tap('#am-medium'); await p.tap('#m-dungeon'); await p.waitForTimeout(600);
+  const r = await p.evaluate(() => { const L = __LR, G = L.Game; G.manual = true; L.Input.onPause = null; G.stepN(200, 1 / 60); const w = document.getElementById('t-water').getBoundingClientRect(), ov = (a, c) => !(a.right < c.left || a.left > c.right || a.bottom < c.top || a.top > c.bottom);
+    const others = ['t-atk', 't-blk', 't-dge', 't-zone', 't-wpn', 't-elm'].filter(id => ov(w, document.getElementById(id).getBoundingClientRect()));
+    L.Input.p.Water = true; G.stepN(30, 1 / 60);
+    return 'jeu : état ' + G.state + ', bouton Eau ' + Math.round(w.width) + 'x' + Math.round(w.height) + ' à ' + Math.round(w.left) + ',' + Math.round(w.top) + ', chevauche : ' + (others.join(',') || 'rien') + ', après appui : « ' + document.getElementById('t-water').textContent + ' » recharge ' + L.Water.cd.toFixed(1) + ', déborde=' + (document.documentElement.scrollWidth > innerWidth + 1) + ', armure ' + G.player.armor.id; });
+  console.log(r);
+  await p.screenshot({ path: __dirname + '/../shots/p1_jeu.png', timeout: 90000 }).catch(() => console.log('shot fail'));
+  console.log(errs.length ? errs.join(' | ') : 'NO ERRORS');
+  await b.close();
+})();

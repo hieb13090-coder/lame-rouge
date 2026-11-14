@@ -1,0 +1,481 @@
+<title>Lame Rouge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+/* Layout : arène 3D plein cadre ; le HUD est fait de fiches de papier washi épinglées sur une grille 3×3 ;
+   les menus sont un rouleau suspendu (kakemono) posé sur la scène. Un seul univers visuel, assumé. */
+:root{
+  color-scheme: dark;
+  --sumi:#15120f;      /* encre */
+  --sumi-2:#2b251f;    /* encre diluée */
+  --washi:#e6dcc6;     /* papier */
+  --washi-2:#cfc2a5;   /* papier ombré */
+  --ai:#27406b;        /* indigo aizome : commandes */
+  --beni:#a51d19;      /* rouge sang : PV, alertes */
+  --kincha:#b8862b;    /* ocre : expérience */
+  --matcha:#62803a;    /* endurance */
+  --koori:#5fc3de;     /* glace */
+  --hi:#e06a1f;        /* feu */
+  --rai:#9a7df0;       /* foudre */
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho","Songti SC",Georgia,serif;
+  --f-ui:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Segoe UI",system-ui,sans-serif;
+  --t-xs:11px; --t-s:12.5px; --t-m:14px; --t-l:18px; --t-xl:26px;
+}
+html,body{height:100%}
+body{margin:0;overflow:hidden;background:var(--sumi);color:var(--washi);font-family:var(--f-ui);font-size:var(--t-m);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+#app{position:relative;height:100%;overflow:hidden;background:var(--sumi)}
+#view{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}
+#app.playing #view{cursor:none}
+#vignette,#hurt,#chill{position:absolute;inset:0;pointer-events:none}
+#vignette{background:radial-gradient(ellipse at 50% 46%,transparent 52%,rgba(8,6,5,.62) 100%)}
+#hurt{background:radial-gradient(ellipse at 50% 50%,transparent 38%,rgba(165,29,25,.75) 100%);opacity:0}
+#chill{opacity:0;transition:opacity .25s}
+
+/* ---------- fiches de papier ---------- */
+.slip{background:linear-gradient(178deg,var(--washi) 0%,var(--washi-2) 100%);color:var(--sumi);
+  box-shadow:0 2px 0 rgba(21,18,15,.35),0 10px 24px rgba(0,0,0,.35);
+  clip-path:polygon(0 3px,6px 0,calc(100% - 4px) 1px,100% 5px,calc(100% - 2px) calc(100% - 4px),calc(100% - 7px) 100%,5px calc(100% - 1px),1px calc(100% - 5px));
+  padding:9px 12px}
+.slip small{font-size:var(--t-xs);color:var(--sumi-2)}
+.seal{display:grid;place-items:center;min-width:30px;height:30px;padding:0 4px;background:var(--beni);color:var(--washi);
+  font-family:var(--f-display);font-weight:800;font-size:17px;line-height:1;box-shadow:inset 0 0 0 2px var(--beni),inset 0 0 0 3px rgba(230,220,198,.55)}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;pointer-events:none;display:grid;gap:8px;
+  grid-template:"player wave target" auto "feed . side" 1fr "body weapons help" auto / minmax(0,1fr) auto minmax(0,1fr);
+  padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#h-player{grid-area:player;justify-self:start;align-self:start;width:min(250px,100%);display:grid;gap:5px}
+.who{display:flex;gap:9px;align-items:center}
+.who b{display:block;font-family:var(--f-display);font-weight:800;font-size:var(--t-l);line-height:1.1}
+.bar{position:relative;height:13px;background:rgba(21,18,15,.16);
+  clip-path:polygon(0 2px,3px 0,100% 1px,calc(100% - 3px) 100%,2px calc(100% - 1px))}
+.bar i{position:absolute;inset:0;transform-origin:0 50%;transition:transform .12s linear;background:var(--beni)}
+.bar span{position:absolute;right:6px;top:-1px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sumi);mix-blend-mode:multiply}
+.bar.sang i{background:#6d1210}.bar.endu i{background:var(--matcha)}.bar.xp{height:5px}.bar.xp i{background:var(--kincha)}
+#h-wave{grid-area:wave;justify-self:center;align-self:start;text-align:center;min-width:132px;padding:6px 16px}
+#h-wave b{display:block;font-family:var(--f-display);font-weight:800;font-size:var(--t-l);line-height:1.15}
+#h-target{grid-area:target;justify-self:end;align-self:start;width:min(230px,100%);display:grid;grid-template-columns:1fr 54px;gap:4px 10px;align-items:center}
+#h-target b{font-family:var(--f-display);font-weight:800;font-size:15px;line-height:1.15;grid-column:1}
+#h-target .bars{display:grid;gap:4px;grid-column:1}
+#h-target svg{grid-column:2;grid-row:1 / span 3;width:54px;height:86px}
+#t-state{grid-column:1;min-height:14px}
+#h-right{grid-area:side;justify-self:end;align-self:start;display:grid;gap:8px;width:min(214px,100%);min-height:0;max-height:100%;overflow:hidden}
+#h-side{font-size:var(--t-s);line-height:1.55}
+#h-side b{font-family:var(--f-display);font-weight:800}
+#h-feed{grid-area:feed;align-self:end;justify-self:start;display:flex;flex-direction:column;gap:4px;align-items:flex-start;max-width:min(300px,100%)}
+#h-feed p{margin:0;padding:3px 9px;background:rgba(21,18,15,.72);color:var(--washi);font-size:var(--t-s);font-weight:500;
+  border-left:3px solid var(--kincha);animation:feed 3.2s forwards}
+#h-feed p.bad{border-left-color:var(--beni)}#h-feed p.good{border-left-color:var(--matcha)}
+@keyframes feed{0%{opacity:0;transform:translateX(-8px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+#h-body{grid-area:body;justify-self:start;align-self:end;display:flex;gap:8px;align-items:center;padding:7px 10px}
+#h-body svg{width:46px;height:74px}
+#h-body ul{list-style:none;margin:0;padding:0;font-size:var(--t-xs);line-height:1.5;min-width:74px}
+#p-armor{border-left:1px solid rgba(21,18,15,.25);padding-left:8px!important;font-variant-numeric:tabular-nums}
+#p-armor s{color:var(--beni);font-weight:700}
+#p-state:empty{display:none}
+.z{fill:rgba(21,18,15,.14);stroke:var(--sumi);stroke-width:1.4;transition:fill .2s}
+.z.s1{fill:#c9a23f}.z.s2{fill:#cf6a22}.z.s3{fill:var(--beni)}
+.z.ar{stroke:var(--kincha);stroke-width:3.4}.z.ar.lo{stroke-width:2.4;stroke-dasharray:6 2.5}
+.z.sev{fill:none;stroke-dasharray:2.5 2.5;stroke:rgba(21,18,15,.55)}
+.z.fr{stroke:var(--koori);stroke-width:2.6}.z.sh{stroke:var(--rai);stroke-width:2.6}.z.bu{stroke:var(--hi);stroke-width:2.6}
+.z.aim{stroke:var(--ai);stroke-width:3}
+#h-weapons{grid-area:weapons;justify-self:center;align-self:end;display:flex;gap:5px;align-items:flex-end;flex-wrap:wrap;justify-content:center;max-width:100%}
+.wslot{background:rgba(21,18,15,.74);color:var(--washi-2);padding:4px 7px 5px;min-width:44px;text-align:center;font-size:var(--t-xs);line-height:1.2;border-bottom:3px solid transparent}
+.wslot kbd{display:block;font:700 10px var(--f-ui);color:var(--kincha)}
+.wslot.on{background:var(--washi);color:var(--sumi);border-bottom-color:var(--beni);font-weight:700}
+.wslot.lock{opacity:.38}
+#h-elem{background:var(--sumi);color:var(--washi);padding:4px 10px 5px;font-size:var(--t-xs);line-height:1.2;text-align:center;border-bottom:3px solid var(--washi-2);min-width:58px}
+#h-elem kbd{display:block;font:700 10px var(--f-ui);color:var(--kincha)}
+#h-elem b{font-weight:700}
+#h-zone{background:var(--sumi);color:var(--washi);padding:4px 10px 5px;font-size:var(--t-xs);line-height:1.2;text-align:center;border-bottom:3px solid var(--washi-2);min-width:96px}
+#h-zone kbd{display:block;font:700 10px var(--f-ui);color:var(--kincha)}
+#h-zone.on{background:var(--ai);border-bottom-color:var(--kincha)}
+#h-water{background:#17414f;color:var(--washi);padding:4px 10px 5px;font-size:var(--t-xs);line-height:1.2;text-align:center;border-bottom:3px solid var(--koori);min-width:84px}
+#h-water kbd{display:block;font:700 10px var(--f-ui);color:var(--kincha)}
+#h-water.cd{background:var(--sumi);border-bottom-color:rgba(230,220,198,.3);color:var(--washi-2)}
+#h-elem.fire{border-bottom-color:var(--hi)}#h-elem.ice{border-bottom-color:var(--koori)}#h-elem.bolt{border-bottom-color:var(--rai)}
+#h-help{grid-area:help;justify-self:end;align-self:end;font-size:var(--t-xs);line-height:1.6;max-width:240px}
+#h-help kbd,#h-side kbd,.keys kbd{font:700 10.5px var(--f-ui);background:var(--sumi);color:var(--washi);padding:1px 5px;margin-right:3px;white-space:nowrap}
+#cross{position:absolute;left:50%;top:50%;width:0;height:0}
+#cross>i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--washi);box-shadow:0 0 0 1.5px rgba(21,18,15,.8)}
+#cross.aim>i{background:var(--beni);box-shadow:0 0 0 1.5px var(--washi),0 0 0 9px rgba(230,220,198,.16)}
+#pring{position:absolute;left:-26px;top:-26px;width:52px;height:52px;border-radius:50%;box-sizing:border-box;border:3px solid var(--washi);opacity:0;pointer-events:none}
+#pring.go{animation:pring .2s linear}#pring.no{border-color:var(--beni);animation:pring .2s linear}
+@keyframes pring{0%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(.25)}}
+#charge{position:absolute;left:-42px;top:24px;width:84px;height:7px;background:rgba(21,18,15,.75);box-shadow:0 0 0 1px rgba(230,220,198,.5);opacity:0;display:block}
+#charge i{display:block;height:100%;width:0;background:var(--washi)}
+#charge.on{opacity:1}#charge.full i{background:var(--kincha);box-shadow:0 0 12px var(--kincha)}
+/* combos : liste et suite en cours */
+.combos{font-size:var(--t-xs);line-height:1.3}
+.combos>b{display:block;font-family:var(--f-display);font-weight:800;font-size:var(--t-m);line-height:1.2}
+.combos small{display:block;margin:3px 0 5px;line-height:1.45}
+.combos small u{text-decoration:none;color:var(--beni);font-weight:700}
+.combos kbd{font:700 10px var(--f-ui);background:var(--sumi);color:var(--washi);padding:1px 4px;margin-right:3px}
+.cb{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2.5px 0;border-top:1px solid rgba(21,18,15,.16)}
+.cb.x span:first-child{color:var(--beni);font-weight:700}
+.sq{display:inline-flex;align-items:center;gap:4px;flex:none}
+.sq em{font-style:normal;font-weight:700;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--sumi-2);margin-right:1px}
+i.l,i.h{display:inline-block;width:8px;height:8px;vertical-align:baseline;flex:none}
+i.l{border-radius:50%;background:var(--sumi)}
+i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
+#h-combos.off{display:none}
+#seq{position:absolute;left:0;top:40px;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap}
+#seq i{width:10px;height:10px}
+#seq i.l{background:var(--washi);box-shadow:0 0 0 1.5px rgba(21,18,15,.85)}
+#seq i.h{box-shadow:0 0 0 1.5px var(--washi)}
+/* sang sur l'objectif */
+#lens{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+#lens i{position:absolute;display:block;opacity:0;animation:lens 2.4s ease-out forwards;
+  background:radial-gradient(circle at 50% 46%,rgba(122,6,9,.93) 0 26%,rgba(92,3,6,.66) 40%,transparent 54%),radial-gradient(circle at 15% 22%,rgba(112,5,8,.86) 0 5%,transparent 7%),radial-gradient(circle at 85% 30%,rgba(112,5,8,.8) 0 4%,transparent 6%),radial-gradient(circle at 71% 87%,rgba(112,5,8,.86) 0 6%,transparent 8%),radial-gradient(circle at 25% 81%,rgba(112,5,8,.8) 0 3.5%,transparent 5%),radial-gradient(circle at 60% 12%,rgba(112,5,8,.8) 0 3%,transparent 4.5%)}
+#lens i::after{content:"";position:absolute;left:44%;top:56%;width:9%;height:90%;border-radius:45%;background:linear-gradient(rgba(112,5,8,.85),rgba(112,5,8,.5) 60%,transparent);transform-origin:50% 0;animation:drip 2.4s ease-in forwards}
+@keyframes lens{0%{opacity:0;transform:scale(.55)}5%{opacity:.95;transform:scale(1.04)}12%{transform:scale(1)}62%{opacity:.8}100%{opacity:0;transform:translateY(22px)}}
+@keyframes drip{0%{transform:scaleY(.12)}100%{transform:scaleY(1)}}
+#combo{position:absolute;left:50%;top:61%;transform:translateX(-50%);font:800 clamp(20px,3.2vw,34px)/1 var(--f-display);color:var(--washi);text-shadow:0 2px 0 var(--sumi),0 0 16px rgba(0,0,0,.9);white-space:nowrap;opacity:0;pointer-events:none}
+#combo.go{animation:combo 1.2s forwards}
+@keyframes combo{0%{opacity:0;transform:translateX(-50%) scale(1.5)}14%{opacity:1;transform:translateX(-50%) scale(1)}75%{opacity:1}100%{opacity:0}}
+#streak{position:absolute;left:50%;top:67%;transform:translateX(-50%);font:700 var(--t-s) var(--f-ui);color:var(--kincha);text-shadow:0 1px 2px #000,0 0 6px #000;letter-spacing:.1em;text-transform:uppercase;pointer-events:none}
+#aim{position:absolute;left:14px;top:-10px;white-space:nowrap;font-size:var(--t-s);font-weight:700;color:var(--washi);text-shadow:0 1px 2px #000,0 0 6px #000}
+#aim em{font-style:normal;color:var(--kincha);letter-spacing:2px;margin-left:5px}
+#prompt{position:absolute;left:50%;bottom:26%;transform:translateX(-50%);background:var(--washi);color:var(--sumi);padding:5px 12px;font-weight:700;font-size:var(--t-s);white-space:nowrap}
+#prompt kbd{background:var(--sumi);color:var(--washi);padding:1px 6px;margin-right:6px;font:700 11px var(--f-ui)}
+#banner{position:absolute;left:0;right:0;top:24%;text-align:center;pointer-events:none;animation:banner 2.6s forwards}
+#banner b{display:block;font-family:var(--f-display);font-weight:800;font-size:clamp(34px,7vw,74px);line-height:1;color:var(--washi);text-shadow:0 3px 0 var(--sumi),0 0 30px rgba(0,0,0,.8)}
+#banner small{display:inline-block;margin-top:8px;padding:3px 12px;background:var(--beni);color:var(--washi);font-size:var(--t-m);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+@keyframes banner{0%{opacity:0;transform:scale(1.25)}12%{opacity:1;transform:none}78%{opacity:1}100%{opacity:0}}
+
+/* ---------- commandes tactiles ---------- */
+#touch{position:absolute;inset:0;pointer-events:none}
+#touch button{position:absolute;pointer-events:auto;border:0;border-radius:50%;background:rgba(230,220,198,.16);color:var(--washi);
+  font:700 12px var(--f-ui);box-shadow:inset 0 0 0 2px rgba(230,220,198,.6);touch-action:none}
+#touch button.down{background:rgba(230,220,198,.5);color:var(--sumi)}
+#t-atk{right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));width:84px;height:84px;font-size:14px}
+#t-blk{right:calc(112px + env(safe-area-inset-right,0px));bottom:calc(64px + env(safe-area-inset-bottom,0px));width:66px;height:66px}
+#t-dge{right:calc(100px + env(safe-area-inset-right,0px));bottom:calc(140px + env(safe-area-inset-bottom,0px));width:58px;height:58px}
+#t-wpn{right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(188px + env(safe-area-inset-bottom,0px));width:52px;height:52px}
+#t-elm{right:calc(78px + env(safe-area-inset-right,0px));bottom:calc(208px + env(safe-area-inset-bottom,0px));width:52px;height:52px}
+#t-zone{right:calc(138px + env(safe-area-inset-right,0px));bottom:calc(196px + env(safe-area-inset-bottom,0px));width:52px;height:52px}
+#t-water{right:calc(190px + env(safe-area-inset-right,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px));width:56px;height:56px;background:rgba(88,169,214,.3);box-shadow:inset 0 0 0 2px rgba(120,200,235,.8)}
+#touch #t-water.cd{background:rgba(21,18,15,.4);box-shadow:inset 0 0 0 2px rgba(230,220,198,.3);color:var(--washi-2)}
+#t-kick{right:calc(188px + env(safe-area-inset-right,0px));bottom:calc(46px + env(safe-area-inset-bottom,0px));width:56px;height:56px}
+#t-pick{left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:auto;height:40px;border-radius:4px;padding:0 16px;background:var(--washi);color:var(--sumi)}
+#t-pause{right:calc(16px + env(safe-area-inset-right,0px));top:calc(196px + env(safe-area-inset-top,0px));width:40px;height:40px}
+#t-stick{position:absolute;width:112px;height:112px;margin:-56px 0 0 -56px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(230,220,198,.45);background:rgba(21,18,15,.25);display:none}
+#t-stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(230,220,198,.6)}
+
+/* ---------- rouleaux (menus) ---------- */
+.veil{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-start;overflow:auto;touch-action:pan-y;
+  background:linear-gradient(90deg,rgba(21,18,15,.82) 0%,rgba(21,18,15,.5) 55%,rgba(21,18,15,.12) 100%);
+  padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.veil.mid{justify-content:center;background:rgba(21,18,15,.66)}
+.scroll{position:relative;width:min(460px,100%);margin-block:auto;margin-left:clamp(0px,6vw,90px);background:linear-gradient(180deg,var(--washi) 0%,var(--washi-2) 100%);color:var(--sumi);
+  padding:26px 26px 24px;box-shadow:0 30px 60px rgba(0,0,0,.55);-webkit-user-select:text;user-select:text}
+.veil.mid .scroll{margin-left:0}
+.scroll::before,.scroll::after{content:"";position:absolute;left:-10px;right:-10px;height:11px;background:var(--sumi-2);
+  box-shadow:inset 0 2px 0 rgba(230,220,198,.18),0 3px 8px rgba(0,0,0,.4);border-radius:5px}
+.scroll::before{top:-6px}.scroll::after{bottom:-6px}
+.scroll h1{margin:0;display:flex;align-items:center;gap:14px;font-family:var(--f-display);font-weight:800;font-size:clamp(34px,8vw,52px);line-height:.95;letter-spacing:.01em;text-wrap:balance}
+.scroll h1 .seal{min-width:52px;height:52px;font-size:34px}
+.scroll h2{margin:0 0 4px;font-family:var(--f-display);font-weight:800;font-size:var(--t-xl);line-height:1.1;text-wrap:balance}
+.scroll p{margin:10px 0 0;line-height:1.55;max-width:60ch}
+.scroll .lead{font-size:15px}
+.acts{display:grid;gap:8px;margin-top:18px}
+.btn{appearance:none;border:0;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  background:var(--sumi);color:var(--washi);padding:12px 14px;font:700 15px var(--f-ui);transition:background .12s,transform .08s}
+.btn small{font-weight:500;font-size:var(--t-xs);color:var(--washi-2);text-align:right}
+.btn:hover{background:var(--ai)}.btn:active{transform:translateY(1px)}
+.btn:focus-visible,.pt button:focus-visible,.opt input:focus-visible{outline:3px solid var(--kincha);outline-offset:2px}
+.btn.alt{background:transparent;color:var(--sumi);box-shadow:inset 0 0 0 2px var(--sumi)}
+.btn.alt small{color:var(--sumi-2)}.btn.alt:hover{background:rgba(21,18,15,.1)}
+.btn.red{background:var(--beni)}.btn.red:hover{background:#861512}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.seg button{appearance:none;border:0;cursor:pointer;flex:1 1 auto;padding:8px 10px;font:700 var(--t-s) var(--f-ui);background:rgba(21,18,15,.1);color:var(--sumi);box-shadow:inset 0 0 0 2px rgba(21,18,15,.35)}
+.seg button.on{background:var(--ai);color:var(--washi);box-shadow:none}
+.seg button small{display:block;font-weight:400;font-size:var(--t-xs);opacity:.85;margin-top:2px}
+.seg button:focus-visible{outline:3px solid var(--kincha);outline-offset:2px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:16px 0 0;font-size:var(--t-s);line-height:1.5}
+.keys dt{white-space:nowrap}.keys dd{margin:0}
+.rule{height:2px;margin:16px 0 0;background:repeating-linear-gradient(90deg,var(--sumi) 0 7px,transparent 7px 11px);opacity:.5}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:var(--t-s);color:var(--sumi-2)}
+.meta b{color:var(--sumi);font-variant-numeric:tabular-nums}
+.attrs{display:grid;gap:7px;margin-top:14px}
+/* duel : nom, salon des joueurs, score */
+.nick{display:block;margin-top:14px;font-weight:700;font-size:var(--t-s)}
+.nick-in{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:9px 10px;font:700 15px var(--f-ui);color:var(--sumi);background:rgba(255,255,255,.4);border:0;border-radius:0;box-shadow:inset 0 0 0 2px var(--sumi);-webkit-user-select:text;user-select:text}
+.nick-in:focus-visible{outline:3px solid var(--kincha);outline-offset:2px}
+.dh{margin:14px 0 0;font-family:var(--f-display);font-weight:800;font-size:var(--t-l)}
+.plist{display:grid;gap:6px;margin-top:8px}
+.prow{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(21,18,15,.08);box-shadow:inset 0 0 0 1.5px rgba(21,18,15,.3)}
+.prow b{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow small{color:var(--sumi-2);font-size:var(--t-xs)}
+.prow button{appearance:none;border:0;cursor:pointer;min-height:36px;padding:7px 12px;font:700 var(--t-s) var(--f-ui);background:var(--sumi);color:var(--washi)}
+.prow button.alt{background:transparent;color:var(--sumi);box-shadow:inset 0 0 0 2px var(--sumi)}
+.prow button:hover{background:var(--ai);color:var(--washi)}
+.prow button:focus-visible{outline:3px solid var(--kincha);outline-offset:2px}
+.dcode{display:grid;gap:8px;margin-top:10px}
+.dcode-in{display:flex;gap:8px}
+.dcode-in .nick-in{margin-top:0;flex:1 1 auto;min-width:0;text-transform:uppercase;letter-spacing:.25em;text-align:center}
+.dcode-in .btn{flex:0 0 auto}
+.dc-big{margin-top:12px;text-align:center;font:800 44px/1 var(--f-display);letter-spacing:.3em;padding-left:.3em;color:var(--beni)}
+#d-cstop{margin-top:6px}
+.prow.ask{background:rgba(165,29,25,.12);box-shadow:inset 0 0 0 2px var(--beni)}
+.pempty{margin:0;padding:6px 0;font-size:var(--t-s);color:var(--sumi-2)}
+.bb .dsc{display:block;text-align:center;margin-top:3px;font-size:var(--t-xs);color:var(--washi);text-shadow:0 1px 0 #000,0 0 6px #000;font-variant-numeric:tabular-nums}
+.bb .dsc .dr{display:none}
+.pt{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:7px 10px;background:rgba(21,18,15,.08)}
+.pt b{display:block}.pt small{color:var(--sumi-2);font-size:var(--t-xs)}
+.pt output{font:800 20px var(--f-display);font-variant-numeric:tabular-nums;min-width:22px;text-align:right}
+.pt button{appearance:none;border:0;width:34px;height:34px;background:var(--ai);color:var(--washi);font:700 20px/1 var(--f-ui);cursor:pointer}
+.pt button:disabled{background:rgba(21,18,15,.2);cursor:default}
+.opt{display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center;margin-top:14px;font-size:var(--t-s)}
+.opt input[type=range]{width:140px;accent-color:var(--beni)}
+.opt input[type=checkbox]{width:18px;height:18px;accent-color:var(--beni)}
+.note{font-size:var(--t-s);color:var(--sumi-2)}
+#fatal .scroll{border-top:6px solid var(--beni)}
+@media (max-width:720px){
+  #hud{grid-template:"player wave target" auto "weapons weapons weapons" auto "feed feed feed" 1fr "body . ." auto / minmax(0,1fr) auto minmax(0,1fr)}
+  #h-weapons{align-self:start;gap:3px} #h-body ul{display:none} #h-feed{align-self:start;margin-top:6px}
+  #h-help,#h-right{display:none}
+  #h-player{width:100%;max-width:170px;min-width:0;padding:7px 8px} #h-player .who small{display:none} #h-player .who b{font-size:15px} #h-player .seal{min-width:24px;height:24px;font-size:14px} #h-player .bar span{display:none} #h-target{width:min(170px,100%);grid-template-columns:1fr 40px} #h-target svg{width:40px;height:64px}
+  #h-wave{min-width:0;padding:5px 9px} #h-wave b{font-size:15px}
+  .wslot{min-width:34px;padding:3px 4px 4px} .wslot:not(.on) span{display:none}
+  .scroll{padding:22px 18px 20px}
+}
+/* interface discrète (par défaut) : Tab affiche tout */
+#hud.min #h-help,#hud.min #h-right,#hud.min #h-target{display:none!important}
+#hud.min #h-player{background:none;box-shadow:none;clip-path:none;padding:0;width:min(190px,44vw);gap:3px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.85))}
+#hud.min #h-player::before,#hud.min #h-player::after{display:none}
+#hud.min #h-player .who,#hud.min #h-player .bar.xp,#hud.min #h-player .bar span{display:none}
+#hud.min #h-player .bar{height:6px;background:rgba(21,18,15,.62)}
+#hud.min #h-wave{background:rgba(21,18,15,.55);color:var(--washi);clip-path:none;box-shadow:none;padding:3px 12px;min-width:0}
+#hud.min #h-wave::before,#hud.min #h-wave::after{display:none}
+#hud.min #h-wave b{font-size:var(--t-m)} #hud.min #h-wave small{color:var(--washi-2)}
+#hud.min #h-body{display:none} #hud.min.sb #h-body{display:flex}
+#hud.min .wslot,#hud.min #h-elem,#hud.min #h-zone{display:none} #hud.min.sw .wslot,#hud.min.sw #h-elem,#hud.min.sw #h-zone{display:block}
+#hud.min #h-water,#hud.min #h-kunai,#hud.min #h-flask{padding:2px 9px 3px;min-width:0;font-size:11px;opacity:.92}
+#hud.min #h-water kbd,#hud.min #h-kunai kbd,#hud.min #h-flask kbd{display:none}
+#hud.min #h-feed p:nth-last-child(n+3){display:none}
+#hud.min #h-boss{top:calc(52px + env(safe-area-inset-top,0px))}
+/* tutoriel */
+#tuto{position:absolute;left:50%;top:calc(58px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(580px,calc(100% - 32px));background:var(--washi);color:var(--sumi);padding:10px 16px 12px;box-shadow:0 6px 24px rgba(0,0,0,.5);border-left:5px solid var(--ai);pointer-events:auto}
+#tuto small{display:block;font-size:var(--t-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sumi-2)}
+#tuto b{display:block;font-family:var(--f-display);font-weight:800;font-size:var(--t-l,20px);line-height:1.2;margin:1px 0 4px}
+#tuto p{margin:0;font-size:var(--t-s);line-height:1.5}
+#tuto kbd{font:700 11px var(--f-ui);background:var(--sumi);color:var(--washi);padding:1px 5px;margin:0 2px}
+#tuto em{display:block;font-style:normal;font-size:var(--t-xs);color:var(--sumi-2);margin-top:5px}
+#tuto.won{border-left-color:var(--matcha)} #tuto.won b::after{content:" — réussi";color:var(--matcha)}
+#tu-skip{appearance:none;border:0;background:var(--sumi);color:var(--washi);font:700 var(--t-xs) var(--f-ui);padding:5px 10px;margin-top:6px;cursor:pointer}
+/* chefs, repères hors champ, kunai */
+#h-boss{position:absolute;left:50%;top:calc(88px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(440px,54vw);display:grid;gap:6px;pointer-events:none}
+.bb b{display:block;text-align:center;font-family:var(--f-display);font-weight:800;font-size:var(--t-m);color:var(--washi);text-shadow:0 1px 0 #000,0 0 8px #000;margin-bottom:2px}
+.bb .bar{height:10px;background:rgba(21,18,15,.72);box-shadow:0 0 0 1.5px rgba(230,220,198,.65)}
+#edge{position:absolute;left:0;top:0}
+#edge i{position:absolute;left:-7px;top:-5px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid rgba(230,220,198,.7);filter:drop-shadow(0 0 2px #000)}
+#edge i.a{border-bottom-color:#e02a22}
+#h-kunai,#h-flask{background:var(--sumi);color:var(--washi);padding:4px 10px 5px;font-size:var(--t-xs);line-height:1.2;text-align:center;border-bottom:3px solid var(--washi-2);min-width:64px}
+#h-kunai kbd,#h-flask kbd{display:block;font:700 10px var(--f-ui);color:var(--kincha)}
+#h-kunai.cd,#h-flask.cd{color:var(--washi-2);border-bottom-color:rgba(230,220,198,.3)}
+#t-kunai{right:calc(196px + env(safe-area-inset-right,0px));bottom:calc(186px + env(safe-area-inset-bottom,0px));width:52px;height:52px;font-size:11px}
+@media (max-width:720px){ #h-boss{left:max(16px,env(safe-area-inset-left,0px));top:auto;bottom:calc(292px + env(safe-area-inset-bottom,0px));transform:none;width:42vw} #edge i{transform-origin:50% 50%} }
+/* duel sur téléphone : ma vie en haut à gauche, celle de l'adversaire en haut à droite, la manche et le score sous son nom */
+@media (max-width:720px){
+  #hud.duel #h-wave,#hud.duel #h-target{display:none!important}
+  #hud.duel #h-player,#hud.min.duel #h-player{width:100%;max-width:none;min-height:48px}
+  #hud.duel #h-boss,#hud.min.duel #h-boss{left:auto;right:max(16px,env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;width:calc(50% - 28px);transform:none}
+  #hud.duel .bb b,#hud.duel .bb .dsc{text-align:right}
+  #hud.duel .bb .dsc .dr{display:inline}
+}
+@media (max-height:660px){ #h-combos:not(.force){display:none} }
+@media (max-height:520px){ #h-body ul{display:none} .keys{display:none} }
+@media (prefers-reduced-motion:reduce){ #banner,#h-feed p{animation-duration:.01s;animation-iteration-count:1} #lens i::after{animation:none} #banner{animation:none} }
+</style>
+
+<div id="app">
+  <canvas id="view" tabindex="0" aria-label="Arène de combat"></canvas>
+  <div id="vignette"></div><div id="lens"></div><div id="chill"></div><div id="hurt"></div>
+
+  <div id="hud" hidden>
+    <div class="slip" id="h-player">
+      <div class="who"><span class="seal" id="h-lvl">1</span><div><b id="h-name">Rōnin</b><small id="h-xpt">0 / 80 XP</small></div></div>
+      <div class="bar pv"><i id="b-hp"></i><span>PV</span></div>
+      <div class="bar sang"><i id="b-blood"></i><span>Sang</span></div>
+      <div class="bar endu"><i id="b-stam"></i><span>Souffle</span></div>
+      <div class="bar xp"><i id="b-xp"></i></div>
+    </div>
+    <div class="slip" id="h-wave"><b id="w-title">Vague 1</b><small id="w-sub"></small></div>
+    <div class="slip" id="h-target" hidden>
+      <b id="t-name"></b>
+      <svg viewBox="0 0 60 100" id="t-svg" aria-hidden="true"></svg>
+      <div class="bars"><div class="bar pv"><i id="t-hp"></i></div><div class="bar sang"><i id="t-blood"></i></div></div>
+      <small id="t-state"></small>
+    </div>
+    <div id="h-right"><div class="slip" id="h-side" hidden></div><div class="slip combos" id="h-combos"></div></div>
+    <div id="h-feed" aria-live="polite"></div>
+    <div class="slip" id="h-body"><svg viewBox="0 0 60 100" id="p-svg" aria-hidden="true"></svg><ul id="p-state"></ul><ul id="p-armor"></ul></div>
+    <div id="h-weapons"></div>
+    <div class="slip" id="h-help"></div>
+    <div id="cross"><i></i><b id="pring"></b><b id="charge"><i></i></b><span id="seq"></span><span id="aim"></span><div id="edge"></div></div>
+    <div id="h-boss"></div>
+    <div id="tuto" hidden><small id="tu-n"></small><b id="tu-t"></b><p id="tu-d"></p><em id="tu-hint">Entrée : passer cette étape</em><button id="tu-skip" type="button" hidden>Passer</button></div>
+    <div id="combo"></div><div id="streak"></div>
+    <div id="prompt" hidden></div>
+    <div id="banner" hidden><b></b><small></small></div>
+  </div>
+
+  <div id="touch" hidden>
+    <div id="t-stick"><i></i></div>
+    <button id="t-atk" type="button">Frapper</button>
+    <button id="t-blk" type="button">Garde</button>
+    <button id="t-dge" type="button">Dash</button>
+    <button id="t-zone" type="button">Cible</button>
+    <button id="t-wpn" type="button">Arme</button>
+    <button id="t-elm" type="button">Lame</button>
+    <button id="t-water" type="button">Pouvoir</button>
+    <button id="t-kunai" type="button">Kunai</button>
+    <button id="t-kick" type="button">Pied</button>
+    <button id="t-pick" type="button" hidden>Ramasser</button>
+    <button id="t-pause" type="button" aria-label="Pause">II</button>
+  </div>
+
+  <div class="veil" id="menu">
+    <div class="scroll">
+      <h1><span class="seal">斬</span>Lame Rouge</h1>
+      <p class="lead">Un rōnin, trois arènes, des vagues de bandits. Chaque membre cède en trois coups : entaille, plaie ouverte, tranché. Le sang reste là où il tombe.</p>
+      <div class="meta" id="m-save"></div>
+      <p class="note">Armure : elle encaisse une part des dégâts, puis ses pièces cassent sous les coups</p>
+      <div class="seg" role="group" aria-label="Armure" id="m-armor">
+        <button type="button" id="am-none">Sans armure <small>0 % · Ultra difficile</small></button><button type="button" id="am-light">Légère <small>30 % · Normal</small></button><button type="button" id="am-medium">Moyenne <small>50 % · Facile</small></button><button type="button" id="am-heavy">Lourde <small>70 % · Sans problème</small></button>
+      </div>
+      <p class="note">Arme et lame : définitives pendant la vague. Chaque lame a son pouvoir (clic molette).</p>
+      <div class="seg" role="group" aria-label="Arme" id="m-weapons"></div>
+      <div class="seg" role="group" aria-label="Lame" id="m-blades"></div>
+      <div class="acts">
+        <button class="btn" id="m-dungeon" type="button">Entrer dans le donjon <small>vagues, boss en armure, niveaux</small></button>
+        <button class="btn alt" id="m-sandbox" type="button">Bac à sable <small>toutes les armes, cibles à volonté</small></button>
+        <button class="btn alt" id="m-tuto" type="button">Tutoriel <small>apprendre à jouer, pas à pas</small></button>
+        <button class="btn alt" id="m-duel" type="button">Duel 1v1 en ligne <small>contre un ami, 2 manches gagnantes</small></button>
+      </div>
+      <p class="note">Arène du bac à sable (le donjon en change toutes les cinq vagues)</p>
+      <div class="seg" role="group" aria-label="Arène du bac à sable">
+        <button type="button" id="ar-dojo">Dojo de nuit</button><button type="button" id="ar-bridge">Pont sous la pluie</button><button type="button" id="ar-fortress">Forteresse en flammes</button>
+      </div>
+      <dl class="keys" id="m-keys"></dl>
+      <div class="rule"></div>
+      <div class="acts"><button class="btn alt" id="m-reset" type="button">Effacer ma progression <small id="m-reset-s">niveau, armes, record</small></button></div>
+    </div>
+  </div>
+
+  <div class="veil mid" id="pause" hidden>
+    <div class="scroll">
+      <h2>Pause</h2>
+      <div class="acts">
+        <button class="btn" id="p-resume" type="button">Reprendre <small id="p-resume-s">Échap</small></button>
+        <button class="btn alt" id="p-restart" type="button">Recommencer <small id="p-restart-s"></small></button>
+        <button class="btn alt" id="p-quit" type="button">Retour au menu</button>
+      </div>
+      <div class="acts" id="p-sand" hidden></div>
+      <div class="opt">
+        <label for="o-sens">Sensibilité de la caméra</label><input id="o-sens" type="range" min="0.3" max="2.5" step="0.05" value="1">
+        <label for="o-sound">Son</label><input id="o-sound" type="checkbox" checked>
+        <label for="o-hud">Interface complète (touche Tab)</label><input id="o-hud" type="checkbox">
+        <label for="o-fs">Plein écran</label><input id="o-fs" type="checkbox">
+        <label for="o-lite">Rendu allégé (machines lentes)</label><input id="o-lite" type="checkbox">
+      </div>
+      <dl class="keys" id="p-keys"></dl>
+      <div class="rule"></div>
+      <div class="combos" id="p-combos" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="veil mid" id="rest" hidden>
+    <div class="scroll">
+      <h2 id="r-title">Vague terminée</h2>
+      <p class="note" id="r-sub"></p>
+      <div class="meta" id="r-meta"></div>
+      <p class="note">Armure pour la prochaine vague</p>
+      <div class="seg" role="group" aria-label="Armure pour la prochaine vague">
+        <button type="button" id="ra-none">Sans armure <small>0 % · Ultra difficile</small></button><button type="button" id="ra-light">Légère <small>30 % · Normal</small></button><button type="button" id="ra-medium">Moyenne <small>50 % · Facile</small></button><button type="button" id="ra-heavy">Lourde <small>70 % · Sans problème</small></button>
+      </div>
+      <p class="note">Arme et lame pour la prochaine vague</p>
+      <div class="seg" role="group" aria-label="Arme" id="r-weapons"></div>
+      <div class="seg" role="group" aria-label="Lame" id="r-blades"></div>
+      <div class="attrs" id="r-attrs"></div>
+      <div class="acts"><button class="btn" id="r-next" type="button">Vague suivante <small>Entrée</small></button></div>
+    </div>
+  </div>
+
+  <div class="veil mid" id="tend" hidden>
+    <div class="scroll">
+      <h2>Tutoriel terminé</h2>
+      <p class="note">Tu connais les gestes : frapper, viser un membre, parer au bon moment, esquiver, le pouvoir de ta lame et la mise à mort. Choisis ton armure, ton arme et ta lame au menu.</p>
+      <div class="acts">
+        <button class="btn" id="tu-dungeon" type="button">Entrer dans le donjon <small>vague 1</small></button>
+        <button class="btn alt" id="tu-menu" type="button">Retour au menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="veil mid" id="over" hidden>
+    <div class="scroll">
+      <h2 id="g-title">Vous êtes tombé</h2>
+      <p class="note" id="g-sub"></p>
+      <div class="meta" id="g-meta"></div>
+      <div class="acts">
+        <button class="btn red" id="g-retry" type="button">Reprendre le combat <small id="g-retry-s"></small></button>
+        <button class="btn alt" id="g-menu" type="button">Retour au menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="veil mid" id="duel" hidden>
+    <div class="scroll">
+      <h2>Duel 1v1</h2>
+      <p class="note" id="d-status">Connexion à la salle…</p>
+      <label class="nick" for="d-nick">Ton nom</label>
+      <input id="d-nick" class="nick-in" type="text" maxlength="16" autocomplete="off" spellcheck="false">
+      <p class="note">Armure, arme et lame pour le duel : toutes les armes sont permises</p>
+      <div class="seg" role="group" aria-label="Armure du duel" id="d-armor"></div>
+      <div class="seg" role="group" aria-label="Arme du duel" id="d-weapons"></div>
+      <div class="seg" role="group" aria-label="Lame du duel" id="d-blades"></div>
+      <p class="note">Arène : celle de celui qui lance le défi</p>
+      <div class="seg" role="group" aria-label="Arène du duel" id="d-arena"></div>
+      <div class="rule"></div>
+      <h3 class="dh">Jouer avec un code</h3>
+      <p class="note">Marche pour n'importe qui ayant le lien du jeu, même sans compte Claude.</p>
+      <div class="dcode">
+        <button class="btn" id="d-mk" type="button">Créer un code</button>
+        <div class="dcode-in"><input id="d-code" class="nick-in" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Code" aria-label="Code du duel"><button class="btn alt" id="d-go" type="button">Rejoindre</button></div>
+      </div>
+      <div class="dc-big" id="d-cbig" hidden></div>
+      <p class="note" id="d-cst" aria-live="polite"></p>
+      <button class="btn alt" id="d-cstop" type="button" hidden>Arrêter le code</button>
+      <div class="rule"></div>
+      <h3 class="dh">Joueurs dans le salon</h3>
+      <div class="plist" id="d-list" aria-live="polite"></div>
+      <p class="note" id="d-help"></p>
+      <div class="acts"><button class="btn alt" id="d-back" type="button">Retour au menu</button></div>
+    </div>
+  </div>
+
+  <div class="veil mid" id="dend" hidden>
+    <div class="scroll">
+      <h2 id="de-title">Victoire</h2>
+      <p class="note" id="de-sub"></p>
+      <div class="acts">
+        <button class="btn red" id="de-again" type="button">Revanche <small id="de-again-s">au meilleur des 3 manches</small></button>
+        <button class="btn alt" id="de-menu" type="button">Quitter le duel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="veil mid" id="fatal" hidden>
+    <div class="scroll"><h2>Le jeu ne peut pas démarrer</h2><p id="fatal-msg"></p></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
