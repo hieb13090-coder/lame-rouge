@@ -157,6 +157,7 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
 #t-zone{right:calc(138px + env(safe-area-inset-right,0px));bottom:calc(196px + env(safe-area-inset-bottom,0px));width:52px;height:52px}
 #t-water{right:calc(190px + env(safe-area-inset-right,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px));width:56px;height:56px;background:rgba(88,169,214,.3);box-shadow:inset 0 0 0 2px rgba(120,200,235,.8)}
 #touch #t-water.cd{background:rgba(21,18,15,.4);box-shadow:inset 0 0 0 2px rgba(230,220,198,.3);color:var(--washi-2)}
+#t-kick{right:calc(188px + env(safe-area-inset-right,0px));bottom:calc(46px + env(safe-area-inset-bottom,0px));width:56px;height:56px}
 #t-pick{left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:auto;height:40px;border-radius:4px;padding:0 16px;background:var(--washi);color:var(--sumi)}
 #t-pause{right:calc(16px + env(safe-area-inset-right,0px));top:calc(196px + env(safe-area-inset-top,0px));width:40px;height:40px}
 #t-stick{position:absolute;width:112px;height:112px;margin:-56px 0 0 -56px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(230,220,198,.45);background:rgba(21,18,15,.25);display:none}
@@ -331,6 +332,7 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
     <button id="t-elm" type="button">Lame</button>
     <button id="t-water" type="button">Pouvoir</button>
     <button id="t-kunai" type="button">Kunai</button>
+    <button id="t-kick" type="button">Pied</button>
     <button id="t-pick" type="button" hidden>Ramasser</button>
     <button id="t-pause" type="button" aria-label="Pause">II</button>
   </div>
@@ -1451,6 +1453,7 @@ const STAGE_FR = ['intact', 'entaille', 'plaie ouverte'];
 
 // len : pointe depuis la main ; b0 : début de la partie dangereuse ; temps en secondes
 const WEAPONS = {
+  legs:      { id: 'legs', wt: 0, name: 'Jambes', short: 'Jambes', kind: 'fist', legs: true, len: 0.1, b0: 0, hands: 1, dmg: 9, wind: 0.10, act: 0.10, rec: 0.20, stam: 6, knock: 1.5, mass: 0.6, hit: 'blunt', hitR: 0.075, cleave: 1, combo: ['punch', 'punch', 'punch'] },
   fists:     { id: 'fists', wt: 0, name: 'Poings', short: 'Poings', kind: 'fist', len: 0.1, b0: 0, hands: 1, dmg: 9, wind: 0.10, act: 0.10, rec: 0.20, stam: 6, knock: 1.5, mass: 0.6, hit: 'blunt', hitR: 0.075, cleave: 1, combo: ['punch', 'punch', 'punch'] },
   katana:    { id: 'katana', wt: 2, name: 'Katana', short: 'Katana', kind: 'blade', len: 0.78, b0: 0.10, hands: 2, grip2: -0.17, below: 0.24, dmg: 22, wind: 0.17, act: 0.13, rec: 0.30, stam: 11, knock: 1.2, mass: 1.1, hit: 'slash', hitR: 0.03, cleave: 2, combo: ['slash', 'slash', 'slash'] },
   longsword: { id: 'longsword', wt: 3, name: 'Épée de chevalier', short: 'Épée', kind: 'blade', len: 0.92, b0: 0.10, hands: 1, below: 0.2, dmg: 24, wind: 0.20, act: 0.15, rec: 0.33, stam: 13, knock: 1.5, mass: 1.4, hit: 'slash', hitR: 0.035, cleave: 2, combo: ['slash', 'slash', 'thrust'] },
@@ -1460,7 +1463,7 @@ const WEAPONS = {
   claymore:  { id: 'claymore', wt: 5, name: 'Claymore', short: 'Claymore', kind: 'blade', len: 1.26, b0: 0.14, hands: 2, grip2: -0.24, below: 0.30, dmg: 36, wind: 0.33, act: 0.19, rec: 0.50, stam: 21, knock: 2.8, mass: 2.8, hit: 'slash', hitR: 0.04, cleave: 3, combo: ['slash', 'slash', 'slash'] },
   staff:     { id: 'staff', wt: 1, name: 'Bâton', short: 'Bâton', kind: 'staff', blunt: true, len: 1.35, b0: 0.3, hands: 2, grip2: 0.5, below: 0.45, dmg: 18.4, wind: 0.158, act: 0.105, rec: 0.27, stam: 7, knock: 1.6, mass: 1.2, hit: 'blunt', hitR: 0.04, cleave: 2, combo: ['slash', 'thrust', 'slash'] },
 };
-const WEAPON_ORDER = ['fists', 'katana', 'longsword', 'spear', 'hatchet', 'daneaxe', 'claymore', 'staff'];
+const WEAPON_ORDER = ['fists', 'katana', 'longsword', 'spear', 'hatchet', 'daneaxe', 'claymore', 'staff', 'legs'];
 
 const ELEMENTS = {
   steel: { id: 'steel', name: 'Acier', color: 0xdfe6ee },
@@ -1526,6 +1529,7 @@ const Save = {
     if (!b.weapons.includes('fists')) b.weapons.unshift('fists');
     if (!b.weapons.includes('claymore')) b.weapons.push('claymore');
     if (!b.weapons.includes('staff')) b.weapons.push('staff');
+    if (!b.weapons.includes('legs')) b.weapons.push('legs');                     // style des jambes : offert à tous
     this.data = b;
   },
   store() { try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch (e) { /* stockage indisponible : la partie continue sans sauvegarde */ } },
@@ -1533,7 +1537,7 @@ const Save = {
 };
 
 // ---------------------------------------------------------------- entrées
-const KeyName = { KeyW: 'Z', KeyA: 'Q', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyF: 'F', KeyH: 'H', KeyM: 'M', KeyN: 'N', KeyB: 'B', KeyV: 'V', KeyK: 'K', KeyL: 'L', KeyI: 'I', KeyP: 'P', KeyR: 'R', KeyT: 'T', KeyQ: 'A', KeyG: 'G', KeyC: 'C', KeyX: 'X', KeyZ: 'W', KeyJ: 'J' };
+const KeyName = { KeyW: 'Z', KeyA: 'Q', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyF: 'F', KeyH: 'H', KeyM: 'M', KeyN: 'N', KeyB: 'B', KeyV: 'V', KeyK: 'K', KeyL: 'L', KeyI: 'I', KeyP: 'P', KeyR: 'R', KeyT: 'T', KeyQ: 'A', KeyG: 'G', KeyC: 'C', KeyO: 'O', KeyX: 'X', KeyZ: 'W', KeyJ: 'J' };
 (function guessLayout() {
   const fr = /^fr/i.test(navigator.language || 'fr');
   if (!fr) { KeyName.KeyW = 'W'; KeyName.KeyA = 'A'; KeyName.KeyQ = 'Q'; KeyName.KeyZ = 'Z'; }
@@ -1646,6 +1650,7 @@ const Input = {
     hold('t-elm', () => { this.p.KeyE = true; });
     hold('t-water', () => { this.p.Water = true; });
     hold('t-kunai', () => { this.p.Kunai = true; });
+    hold('t-kick', () => { this.p.Kick = true; });
     hold('tu-skip', () => { this.p.TutoSkip = true; });
     hold('t-pick', () => { this.p.KeyF = true; });
     hold('t-pause', () => { if (this.onPause) this.onPause(); });
@@ -3084,6 +3089,7 @@ class Fighter {
     if (A.type === 'stagger' || A.type === 'stun' || A.type === 'dodge' || A.type === 'down' || A.type === 'cast') { if (A.t >= A.dur) { if (A.type === 'dodge') { this.push.x += A.vx * 0.22; this.push.z += A.vz * 0.22; this.landT = 0.16; } this.idle(); } }
     else if (A.type === 'block') { if (A.t >= A.dur || !this.canAct) this.idle(); }
     else if (A.type === 'attack') Combat.advance(this, dt);
+    if (this.action.type === 'down' && this.action.fly) this.fly(dt);
     this.move(dt);
     this.animate(dt);
     if (this.action.type === 'attack') Combat.sweep(this);
@@ -3166,7 +3172,7 @@ class Fighter {
     else if (A.type === 'stun') { const q = A.still ? 0 : 1; T.lean = A.still ? 0.04 : 0.22; T.crouch = 0.08 * q; T.side = 0.07 * Math.sin(this.t * 37) * q; T.twist = 0.08 * Math.sin(this.t * 29) * q; }
     else if (A.type === 'cast') { T.lean = A.el === 'ice' ? 0.2 : 0.03; T.twist = A.el === 'ice' ? 0 : (A.off === 'L' ? -0.28 : 0.28); T.crouch = 0.03; }
     else if (dash) { const x = A.t / A.dur, k = sp > 0.1 ? 1 / sp : 0; T.crouch = 0.1 + 0.15 * Math.sin(PI * Math.min(1, x * 1.15)); T.lean = 0.2 * vf * k; T.side = 0.24 * vr * k; T.fwd = 0.05 * vf * k; }      // le corps plonge dans le sens du dash
-    else if (A.type === 'attack' && A.pose) { T.twist = A.pose.twist; T.lean = A.pose.lean; T.crouch = A.pose.crouch; T.hip = A.pose.hip || 0; T.fwd = A.pose.fwd || 0; }
+    else if (A.type === 'attack' && A.pose) { T.twist = A.pose.twist; T.lean = A.pose.lean; T.crouch = A.pose.crouch; T.hip = A.pose.hip || 0; T.fwd = A.pose.fwd || 0; T.side = A.pose.side || 0; }
     else if (this.W.kind !== 'fist' && sp < 0.35) T.crouch = 0.02;              // en garde : genoux fléchis
     if (this.landT > 0) { this.landT -= dt; T.crouch += 0.1 * clamp(this.landT / 0.16, 0, 1); }      // réception après un dash
     const tired = this.isPlayer ? clamp(1 - this.stam / 45, 0, 1) : 0;
@@ -3178,7 +3184,9 @@ class Fighter {
 
     const dn = A.type === 'down', lie = this.lie = damp(this.lie, dn && A.t < A.dur - 0.45 ? 1 : 0, dn ? 11 : 8, dt);      // à terre sur le dos, puis il se relève
     this.root.position.copy(this.pos); this.root.rotation.y = this.yaw; this.root.rotation.x = -1.5 * lie; this.root.position.y = 0.14 * s * lie;
-    if (dn && !A.thud && lie > 0.75) { A.thud = true; Sfx.thud(this.pos, 0.9); Fx.dust(_f1.set(this.pos.x - Math.sin(this.yaw) * 0.9 * s, 0.05, this.pos.z - Math.cos(this.yaw) * 0.9 * s), 6, 0.3); Gfx.shake = Math.max(Gfx.shake, 0.06); }
+    const flying = dn && A.fly && A.t < A.fly.T;
+    if (flying) this.root.position.y += A.fly.H * s * Math.sin(PI * A.t / A.fly.T);      // projeté : il décrit un arc avant de retomber
+    if (dn && !A.thud && lie > 0.75 && !flying && !A.fly) { A.thud = true; Sfx.thud(this.pos, 0.9); Fx.dust(_f1.set(this.pos.x - Math.sin(this.yaw) * 0.9 * s, 0.05, this.pos.z - Math.cos(this.yaw) * 0.9 * s), 6, 0.3); Gfx.shake = Math.max(Gfx.shake, 0.06); }
     let hipYaw = this.legTwist, roll = 0;
     if (this.kneel) {                                                          // plus de jambes valides : à genoux
       J.hips.rotation.set(0, hipYaw, P.side * 0.4 + this.flinch.z * 0.3);
@@ -3194,7 +3202,8 @@ class Fighter {
       G.on = false; G.amp = 0;
       this.root.updateMatrixWorld(true);
     } else {
-      this.stepFeet(dt, sp, vx, vz, fx, fz, rx, rz);
+      const KK = A.type === 'attack' && A.kind === 'kick' && A.K ? A.K : null;      // coup de pied retourné : les pieds suivent le saut, pas la marche
+      if (KK) this.kickFeet(KK, A); else this.stepFeet(dt, sp, vx, vz, fx, fz, rx, rz);
       // bassin : il monte et descend avec la foulée, se déporte sur la jambe d'appui, roule et pivote avec les pas
       const a = G.amp, rw = G.run, c1 = Math.cos(TAU * (G.ph - G.beta * 0.5)), c0 = Math.cos(TAU * G.ph), big = s > 1.08 ? 1.5 : 1;
       G.bob = -lerp(0.016, 0.04, rw) * Math.cos(2 * TAU * (G.ph - rw * G.beta * 0.5)) * a;
@@ -3207,7 +3216,7 @@ class Fighter {
       hipYaw += P.hip + G.yaw; roll = G.roll + limp * 0.1;
       J.hips.rotation.set(0, hipYaw, P.side * 0.4 + this.flinch.z * 0.3 + roll);
       // hauteur du bassin : jamais plus haut que ce que les jambes peuvent atteindre
-      let hy = D.hipH - 0.035 - P.crouch - 0.012 * (1 - Math.min(1, a)) + G.bob - 0.045 * Math.abs(limp);
+      let hy = D.hipH - 0.035 - P.crouch - 0.012 * (1 - Math.min(1, a)) + G.bob - 0.045 * Math.abs(limp) + (KK ? KK.jump : 0);
       const maxLeg = (D.thigh + D.shin) * 0.99, ox = (fx * P.fwd - rx * G.lat) * s, oz = (fz * P.fwd - rz * G.lat) * s; let drop = 0;
       for (const sd of ['L', 'R']) {
         if (this.seg['thigh' + sd].state !== 'ok' || this.seg['shin' + sd].state !== 'ok') continue;
@@ -3336,6 +3345,19 @@ class Fighter {
     }
   }
 
+  // coup de pied retourné : pied qui frappe et pied d'appel placés par la géométrie du coup (Combat.kickGeo)
+  kickFeet(K, A) {
+    const G = this.gait, s = this.scale, kl = A.kleg, sl = kl === 'R' ? 'L' : 'R';
+    G.on = false; G.amp = 0;
+    const put = (sd, p, air, pitch) => {
+      const f = this.feet[sd];
+      f.p.set(p.x, 0, p.z); f.pitch = pitch; f.yaw = K.yaw; f.ay = air ? Math.max(p.y, 0.07 * s) : 0.07 * s;
+      if (air) { f.t = 0.5; f.st = false; }
+      else { if (!f.st) this.footfall(sd, p.x, p.z); f.t = 1; f.st = true; f.plant.set(p.x, 0, p.z); f.from.copy(f.plant); }
+    };
+    put(kl, K.footK, K.airK, K.pitchK); put(sl, K.footS, K.airS, K.pitchS);
+  }
+
   // jambe à deux os : la cheville va sur le pied posé, le genou plie vers l'avant, le pied reste à plat
   solveLeg(side, hipsQ) {
     const J = this.J, hp = J['hip' + side], kn = J['kn' + side], th = this.seg['thigh' + side], sh = this.seg['shin' + side], f = this.feet[side], s = this.scale;
@@ -3388,6 +3410,9 @@ class Fighter {
       if (!fist) { tg[main].set(-0.27 * mx, 0.02, 0.04); dir.set(-0.25 * mx, -0.45, -0.86); }
     }
     if (A.type === 'down') { tg.R.set(-0.44, 0.2, 0.1); tg.L.set(0.44, 0.22, 0.08); if (!fist) dir.set(-0.85 * mx, -0.3, 0.2); }      // bras en croix
+    if (A.type === 'attack' && A.kind === 'kick' && A.K) {                     // coup de pied retourné : les bras s'ouvrent et montent pour tourner
+      const k = A.K.arms; tg.R.lerp(_f1.set(-0.42, 0.44, 0.04), k); tg.L.lerp(_f1.set(0.42, 0.47, 0.02), k); if (!fist) dir.lerp(_f1.set(-0.3 * mx, -0.35, -0.88), k);
+    }
     if (A.type === 'stagger' || A.type === 'stun') { const j = A.type === 'stun' ? 0.05 : 0; tg.R.x -= 0.1; tg.R.y += 0.08 + rndS(j); tg.L.x += 0.1; tg.L.y += 0.06 + rndS(j); dir.x += 0.5 * mx; dir.z -= 0.2; }
     dir.normalize();
     const a = 1 - Math.exp(-20 * dt);
@@ -3414,7 +3439,7 @@ class Fighter {
         _f2.crossVectors(Y, Z);
         wp.obj.quaternion.setFromRotationMatrix(_fm.makeBasis(_f2, Y, Z)); wp.obj.position.copy(this.hw[main]);
       }
-      this.gripK = W.hands === 2 ? damp(this.gripK, twoH && !(A.type === 'attack' && A.shove) && A.type !== 'cast' && !carry ? 1 : 0, 16, dt) : 0;
+      this.gripK = W.hands === 2 ? damp(this.gripK, twoH && !(A.type === 'attack' && (A.shove || A.kind === 'kick')) && A.type !== 'cast' && !carry ? 1 : 0, 16, dt) : 0;
       if (this.gripK > 0.002) this.hw[off].lerp(_f2.copy(this.hw[main]).addScaledVector(this.wDirW, (W.grip2 || 0) * this.scale), this.gripK);
     }
     this.solveArm(off, this.hw[off]);
@@ -3870,6 +3895,14 @@ Object.assign(Fighter.prototype, {
 // 06 — combat : la lame décrit un arc réel dans l'espace, on teste son balayage contre chaque membre.
 //      Garde, parade parfaite, lames élémentaires.
 // ======================================================================
+// coup de pied retourné (540) : sauté, tourné, le pied passe à hauteur de tête ; il ne dépend pas de l'arme tenue
+const KV = {
+  k540:  { name: 'Coup de pied retourné', w: 0.3, a: 0.36, r: 0.46, dmg: 22, knock: 7, cleave: 4, hitR: 0.08, stam: 20, blunt: true, on: 0.3, off: 0.94, launch: 6.5 },
+  front: { name: 'Coup de pied de face', w: 0.13, a: 0.15, r: 0.24, dmg: 13, knock: 9, cleave: 1, hitR: 0.08, stam: 8, blunt: true, on: 0.35, off: 0.97 },
+  round: { name: 'Coup de pied circulaire', w: 0.15, a: 0.2, r: 0.28, dmg: 16, knock: 6, cleave: 2, hitR: 0.08, stam: 10, blunt: true, on: 0.2, off: 0.97 },
+  low:   { name: 'Balayage', w: 0.13, a: 0.18, r: 0.27, dmg: 11, knock: 3, cleave: 2, hitR: 0.09, stam: 8, blunt: true, on: 0.2, off: 0.97 },
+};
+const KICK = KV.k540;
 const Combat = {
   _t: new V3(), _c: new V3(), _v0: new V3(), _l1: new V3(), _l2: new V3(), _l3: new V3(), _c1: new V3(), _c2: new V3(), _hp: new V3(), _hpp: new V3(), _a: new V3(), _b: new V3(), _d: new V3(), _k: new V3(),
   _fh: new V3(), _fd: new V3(), _fe: new V3(), _sm: new M4(), _sv: new V3(), _up: new V3(),
@@ -3882,12 +3915,14 @@ const Combat = {
     o = o || {};
     if (!F.canAct || F.rag || F.action.type === 'down') return false;
     if (o.shove && F.W.kind !== 'fist' && !F.armOK[F.heldSide === 'R' ? 'L' : 'R']) return false;
-    const W = F.W, cost = o.finisher ? 0 : o.shove ? 9 : W.stam * (o.heavy ? 1.6 : 1);
+    const kick = o.kind === 'kick' && !o.finisher; if (kick) { o.heavy = false; o.held = false; }
+    const kv = kick ? (KV[o.kv] ? o.kv : 'k540') : null;
+    const W = F.W, cost = o.finisher ? 0 : kick ? KV[kv].stam : o.shove ? 9 : W.stam * (o.heavy ? 1.6 : 1);
     if (F.isPlayer && F.stam < cost * 0.45) return false;
     F.stam = Math.max(0, F.stam - cost); F.stamWait = 0.7;
     const combo = o.combo || 0, sp = Math.max(0.3, F.atkSpd), prev = F.action.type === 'attack' && F.action.cur ? F.action : null;
     const A = {
-      type: 'attack', t: 0, pt: 0, phase: 0, combo, heavy: !!o.heavy, kind: o.finisher ? 'finish' : o.shove || W.kind === 'fist' ? 'punch' : o.kind || W.combo[combo % W.combo.length], finisher: !!o.finisher, behead: !!o.behead, shove: !!o.shove, finV: o.finV || null, struck: false, sx: 0, sz: 0,
+      type: 'attack', t: 0, pt: 0, phase: 0, combo, heavy: !!o.heavy, kind: o.finisher ? 'finish' : kick ? 'kick' : o.shove || W.kind === 'fist' ? 'punch' : o.kind || W.combo[combo % W.combo.length], finisher: !!o.finisher, behead: !!o.behead, shove: !!o.shove, finV: o.finV || null, struck: false, sx: 0, sz: 0,
       mult: o.mult || 1, knockK: o.knockK || 1, cleaveX: o.cleave || 0, double: !!o.double, wide: !!o.wide, breaker: !!o.breaker, exec: !!o.exec && W.kind !== 'fist', spin: !!o.spin, rise: !!o.rise, run: !!o.run, forceOver: !!o.over, pre: '', key: '', yaw0: 0, full: false, chargeMax: W.id === 'claymore' ? 0.85 : 0.5, w0: 0, from: null,
       victim: tgt ? tgt.victim || null : null, body: tgt ? tgt.body || null : null, zone: tgt ? tgt.zone || null : null, hasPoint: !!tgt, point: new V3(),
       s: 0, sPrev: 0, sEnd: 1, w: 0, hit: new Set(), hits: 0, fallback: null, done: false, held: !!o.held && !o.finisher, canCharge: F.isPlayer && !o.finisher, charge: 0, queued: false,
@@ -3897,12 +3932,25 @@ const Combat = {
     };
     if (tgt) A.point.copy(tgt.point);
     if (A.shove) { A.wind = 0.12; A.act = 0.12; A.rec = 0.32; A.punch = W.kind === 'fist' ? 'L' : F.heldSide === 'R' ? 'L' : 'R'; A.sideSign = 1; A.canCharge = false; A.held = false; }
-    if (prev && prev.w > 0.05) {                                                 // enchaînement : la lame repart de là où elle est, sans repasser par la garde
+    if (kick) {
+      const K = KV[kv], q = Math.max(0.8, sp); A.kv = kv; A.wind = K.w / q; A.act = K.a / q; A.rec = K.r / Math.max(0.9, sp); A.canCharge = false; A.held = false;
+      A.kleg = kv === 'k540' ? (F.legOK.R || !F.legOK.L ? 'R' : 'L') : (combo % 2 === 0 ? (F.legOK.R ? 'R' : 'L') : (F.legOK.L ? 'L' : 'R'));
+      A.kd = A.kleg === 'R' ? 1 : -1; A.kyaw = F.yaw; A.kland = false;
+    }
+    if (prev && prev.w > 0.05 && !kick) {                                                 // enchaînement : la lame repart de là où elle est, sans repasser par la garde
       const sd = prev.kind === 'punch' ? prev.punch : F.heldSide;
       A.w0 = prev.w; A.from = { hand: prev.cur.hand.clone().sub(F.pos), dir: prev.cur.dir.clone(), edge: prev.cur.edge.clone(), side: sd };
     }
     F.endTrail(); F.action = A; A.o = o; if (F.isPlayer) A.netId = ++Net.aid;
     if (tgt) F.yawT = Math.atan2(A.point.x - F.pos.x, A.point.z - F.pos.z);
+    if (kick) {
+      A.kyaw = F.yawT; this.plan(F, A);
+      if (tgt && A.kv !== 'k540' && F.moveMul > 0) {                            // coup de pied au sol : on avance d'un pas si la cible est loin
+        const dx = A.point.x - F.pos.x, dz = A.point.z - F.pos.z, d = Math.hypot(dx, dz) || 1, k = clamp((d - 1.05 * F.scale) * 7, 0, 8);
+        F.push.x += (dx / d) * k; F.push.z += (dz / d) * k;
+      }
+      return true;
+    }
     F.root.rotation.y = F.yaw; F.root.updateMatrixWorld(true);
     if (A.finisher) {                                                          // mise à mort : on vient se placer au-dessus du corps
       A.wind = 0.46; A.act = 0.16; A.rec = 0.38;                                // une seconde de jeu, plus le ralenti à l'impact : environ 1,2 s à l'écran
@@ -3926,6 +3974,7 @@ const Combat = {
 
   // géométrie du coup dans le repère du combattant : pivot P, direction u vers la cible, v = côté d'où vient la lame
   plan(F, A) {
+    if (A.kind === 'kick') { A.low = 0; A.steps = 40; A.dist = 1; return; }
     const ms = F.heldSide === 'R' ? -1 : 1, T = this._t;
     if (A.hasPoint) { T.copy(A.point); F.root.worldToLocal(T); } else T.set(0, 1.15, 1.25);
     T.x = clamp(T.x, -1.3, 1.3); if (T.z < 0.3) T.z = 0.3; T.y = clamp(T.y, 0.08, 2.3);
@@ -3960,6 +4009,14 @@ const Combat = {
 
   // position de la main et de la lame à l'avancement s (0..1) de la phase active
   sample(F, A, s, out) {
+    if (A.kind === 'kick') {
+      const K = this.kickGeo(F, A, 1 + s, this._kg), hip = K.hipK, ft = K.footK;
+      out.hand.copy(ft); out.dir.subVectors(ft, hip).normalize();
+      out.base.copy(hip).lerp(ft, 0.45); out.tip.copy(ft).addScaledVector(out.dir, 0.1 * F.scale);
+      const K2 = this.kickGeo(F, A, 1 + Math.min(1, s + 0.02), this._kg2); out.edge.subVectors(K2.footK, ft); out.edge.y = 0;
+      if (out.edge.lengthSq() < 1e-8) out.edge.copy(out.dir); out.edge.normalize();
+      return out;
+    }
     const W = F.W, L = this._l1, Dl = this._l2, E = this._l3, sc = F.scale;
     if (A.kind === 'slash') {
       const th = A.th0 + (A.th1 - A.th0) * Math.pow(s, 1.5), thb = th + 0.42 * (1 - s), r = 0.3 + 0.2 * Math.cos(clamp(th * 0.75, -PI / 2, PI / 2));
@@ -3988,8 +4045,62 @@ const Combat = {
   },
 
   // ce que les bras doivent faire pendant l'attaque (fondu vers/depuis la garde)
+  // géométrie du coup de pied à l'instant u (0..1 élan dos tourné, 1..2 saut et rotation, 2..3 réception) :
+  //   rotation du corps, hauteur du saut, positions monde des deux pieds et de la hanche qui frappe
+  _kg: { footK: new V3(), footS: new V3(), hipK: new V3() }, _kg2: { footK: new V3(), footS: new V3(), hipK: new V3() }, _kl: new V3(),
+  kickGeo(F, A, u, o) {
+    const V = KV[A.kv] || KV.k540, sc = F.scale, s0 = clamp(u, 0, 1), s1 = clamp(u - 1, 0, 1), s2 = clamp(u - 2, 0, 1), ls = A.kleg === 'R' ? -1 : 1, d = A.kd;
+    const LEG = (D.thigh + D.shin) * 1.02, L = this._kl;
+    let th = 0, J = 0, cr = 0, ln = 0, sd = 0, arms = 0, al = ls * 0.9, ex = 0, fy = 1.2;
+    if (A.kv === 'k540') {                                                     // retourné sauté : dos tourné, saut, un tour et demi, réception sur la jambe qui frappe
+      const T0 = 0.9 * PI, T1 = TAU + 2.4;
+      th = u < 1 ? T0 * smooth(s0) : u < 2 ? T0 + (T1 - T0) * s1 : T1 - 2.4 * smooth(Math.min(1, s2 / 0.75));
+      J = u >= 1 && u < 2 ? 0.5 * Math.pow(Math.sin(PI * s1), 0.85) : 0;
+      ex = u < 2 ? (s1 < 0.38 ? smooth(s1 / 0.38) : s1 < 0.86 ? 1 : lerp(1, 0.2, smooth((s1 - 0.86) / 0.14))) : 0;
+      cr = u < 1 ? 0.12 * Math.sin(PI * Math.min(1, s0 * 1.15)) : u < 2 ? 0 : 0.22 * Math.pow(1 - s2, 1.5);
+      ln = u < 1 ? 0.12 * s0 : u < 2 ? -0.4 * Math.sin(PI * s1) : 0.35 * Math.pow(1 - s2, 1.3);
+      sd = u >= 1 && u < 2 ? -ls * 0.45 * Math.sin(PI * s1) : 0; arms = u < 1 ? smooth(s0) * 0.6 : u < 2 ? 1 : 1 - smooth(s2); fy = 0.1;
+    } else {                                                                   // coups de pied au sol : de face, circulaire, balayage bas
+      const front = A.kv === 'front', low = A.kv === 'low', piv = front ? 0 : low ? 0.35 : 0.55;
+      th = u < 1 ? piv * 0.3 * smooth(s0) : u < 2 ? piv * (0.3 + 0.7 * smooth(s1)) : piv * (1 - smooth(s2));
+      ex = u < 1 ? 0 : u < 2 ? (s1 < (front ? 0.5 : 0.3) ? smooth(s1 / (front ? 0.5 : 0.3)) : s1 < 0.88 ? 1 : lerp(1, 0.4, smooth((s1 - 0.88) / 0.12))) : 0.4 * (1 - smooth(s2));
+      al = front ? ls * 0.12 : ls * lerp(1.75, -0.45, u < 1 ? 0 : u < 2 ? s1 : 1);
+      fy = front ? 0.98 : low ? 0.3 : 1.28;
+      cr = low ? 0.24 * (u < 1 ? smooth(s0) : u < 2 ? 1 : 1 - smooth(s2)) : 0.04;
+      ln = front ? -0.12 * (u < 1 ? s0 : u < 2 ? 1 : 1 - s2) : low ? 0.25 * (u < 2 ? 1 : 1 - s2) : -0.2 * (u < 1 ? s0 : u < 2 ? 1 : 1 - s2);
+      sd = front ? 0 : -ls * (low ? 0.1 : 0.3) * (u < 1 ? s0 : u < 2 ? 1 : 1 - s2); arms = 0;
+    }
+    const Y = o.yaw = A.kyaw + d * th, cy = Math.cos(Y), sy = Math.sin(Y);
+    o.jump = J; o.crouch = cr; o.lean = ln; o.side = sd; o.arms = arms;
+    const toW = (v, x, y, z) => v.set(F.pos.x + (x * cy + z * sy) * sc, y * sc, F.pos.z + (-x * sy + z * cy) * sc);
+    const hy = D.hipH + D.hipY + J - cr * 0.8;
+    toW(o.hipK, ls * D.hipX, hy, 0);
+    // jambe qui frappe : armée (genou haut), tendue, puis reposée ; on reste dans la longueur de la jambe
+    const hx = ls * D.hipX, cx = A.kv === 'front' ? hx : hx + ls * 0.22, cyy = hy - 0.34, cz = A.kv === 'front' ? 0.3 : 0.16;
+    const ty = A.kv === 'k540' ? hy + fy : fy, dy = clamp(ty - hy, -LEG * 0.95, LEG * 0.95), rh = Math.sqrt(Math.max(0.01, LEG * LEG - dy * dy));
+    const exX = hx + Math.sin(al) * rh, exY = hy + dy, exZ = Math.cos(al) * rh, e = smooth(ex);
+    if (u < 1) {
+      if (A.kv === 'k540') L.set(ls * 0.13, 0, -0.12 * smooth(s0));
+      else { const k = smooth(s0); L.set(lerp(ls * 0.13, cx, k), lerp(0, cyy, k), lerp(-0.05, cz, k)); }
+    } else if (u < 2 || A.kv !== 'k540') {
+      if (u < 2) L.set(lerp(cx, exX, e), lerp(cyy, exY, e), lerp(cz, exZ, e));
+      else { const k = smooth(Math.min(1, s2 / 0.6)), bx = lerp(cx, exX, e), by = lerp(cyy, exY, e), bz = lerp(cz, exZ, e); L.set(lerp(bx, ls * 0.14, k), lerp(by, 0, k), lerp(bz, A.kv === 'front' ? 0.3 : 0.05, k)); }
+    } else { const k = smooth(Math.min(1, s2 / 0.3)); L.set(lerp(ls * 0.3, ls * 0.17, k), lerp(0.25, 0, k), lerp(0.2, 0.28, k)); }
+    toW(o.footK, L.x, L.y, L.z); o.airK = L.y > 0.02; o.pitchK = L.y > 0.15 ? 1.1 : 0;
+    // jambe d'appui : elle reste posée, sauf au saut où elle se replie sous le corps puis se pose derrière
+    const ss = -ls;
+    if (A.kv !== 'k540' || u < 1) L.set(ss * 0.12, 0, A.kv === 'k540' ? 0.06 : -0.04);
+    else if (u < 2) { const k = smooth(Math.min(1, s1 / 0.22)), dd = s1 > 0.75 ? smooth((s1 - 0.75) / 0.25) : 0; L.set(ss * 0.13, lerp(0, hy - 0.55, k) * (1 - dd) + dd * (hy - 0.75), lerp(0.06, 0.08, k) - 0.2 * dd); }
+    else { const k = smooth(Math.min(1, s2 / 0.45)); L.set(ss * 0.16, lerp(0.15, 0, k), lerp(-0.2, -0.32, k)); }
+    toW(o.footS, L.x, L.y, L.z); o.airS = L.y > 0.02; o.pitchS = o.airS ? 0.6 : 0;
+    return o;
+  },
+  kickU(A) { return A.phase === 0 ? Math.min(1, A.pt / A.wind) : A.phase === 1 ? 1 + A.s : 2 + Math.min(1, A.pt / A.rec); },
+
   pose(F) {
-    const A = F.action, o = this._pose, s = A.phase === 0 ? 0 : A.phase === 1 ? A.s : A.sEnd;
+    const A = F.action, o = this._pose;
+    if (A.kind === 'kick') return null;
+    const s = A.phase === 0 ? 0 : A.phase === 1 ? A.s : A.sEnd;
     this.sample(F, A, s, A.cur);
     o.hand = A.cur.hand; o.dir = A.cur.dir; o.edge = A.cur.edge; o.w = A.w; o.side = A.kind === 'punch' ? A.punch : F.heldSide; o.off = null;
     if (A.phase === 0 && A.from && A.from.side === o.side) {
@@ -4002,6 +4113,7 @@ const Combat = {
   advance(F, dt) {
     const A = F.action, W = F.W; A.pt += dt;
     if (A.finisher) { this.advanceFinish(F, A, dt); return; }
+    if (A.kind === 'kick') { this.advanceKick(F, A, dt); return; }
     if (A.phase === 0) {
       if (A.victim && !A.victim.dead && A.zone && !A.victim.rag) { A.victim.zonePoint(A.zone, A.point); F.yawT = Math.atan2(A.point.x - F.pos.x, A.point.z - F.pos.z); }
       F.root.rotation.y = F.yaw; F.root.position.copy(F.pos); F.root.updateMatrixWorld(true);
@@ -4055,6 +4167,33 @@ const Combat = {
     if (A.phase === 2) { const k = A.w; P.twist *= k; P.lean *= k; P.crouch *= k; P.hip *= k; P.fwd *= k; }
   },
 
+  advanceKick(F, A, dt) {
+    if (A.phase === 0) {
+      if (A.victim && !A.victim.dead && !A.victim.rag) A.kyaw = Math.atan2(A.victim.pos.x - F.pos.x, A.victim.pos.z - F.pos.z);      // on vise la cible jusqu'à l'appel
+      A.w = 1; A.s = 0;
+      if (F.moveMul > 0) { const k = A.kv === 'k540' ? 9 : A.kv === 'front' ? 6 : 3; F.push.x += Math.sin(A.kyaw) * k * dt; F.push.z += Math.cos(A.kyaw) * k * dt; }      // pas d'élan
+      if (!F.isPlayer && !A.cue && A.pt >= A.wind - 0.22) { A.cue = true; Sfx.shing(F.pos); }
+      if (A.pt >= A.wind) {
+        A.phase = 1; A.pt = 0; A.sPrev = 0; A.yaw0 = A.kyaw;
+        if (F.moveMul > 0 && A.kv === 'k540') {                                  // appel : le saut emporte vers la cible
+          const d = A.victim && !A.victim.rag ? Math.hypot(A.victim.pos.x - F.pos.x, A.victim.pos.z - F.pos.z) : 1.6, k = clamp((d - 1.15) * 4.5, 0, 6) + 1.5;
+          F.push.x += Math.sin(A.kyaw) * k; F.push.z += Math.cos(A.kyaw) * k;
+        }
+        F.trail = Trails.get(0xffffff, A.kv === 'k540' ? 0.35 : 0.2); Sfx.whoosh(F.pos, A.kv === 'k540'); if (A.kv === 'k540') Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 5, 0.25);
+      }
+    } else if (A.phase === 1) {
+      A.s = Math.min(1, A.pt / A.act);
+      if (A.pt >= A.act) { A.s = 1; A.phase = 2; A.pt = 0; }
+    } else {
+      if (!A.kland) { A.kland = true; if (A.kv === 'k540') { Sfx.thud(F.pos, 0.45); Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 7, 0.3); if (F.isPlayer) Gfx.shake = Math.max(Gfx.shake, 0.05); } }
+      A.w = 1 - smooth(A.pt / A.rec);
+      if (A.pt >= A.rec) { F.yaw = F.yawT = A.kyaw; F.idle(); return; }
+    }
+    const K = A.K = this.kickGeo(F, A, this.kickU(A), A.K || { footK: new V3(), footS: new V3(), hipK: new V3() });
+    F.yaw = F.yawT = K.yaw;
+    const P = A.pose; P.twist = 0; P.hip = 0; P.fwd = 0; P.lean = K.lean; P.crouch = K.crouch; P.side = K.side;
+  },
+
   // balayage sous-échantillonné de la lame entre deux images : aucun membre ne passe entre deux positions
   sweep(F) {
     const A = F.action; if (A.type !== 'attack' || A.phase === 0 || A.done || A.finisher) return;
@@ -4062,6 +4201,7 @@ const Combat = {
     const n = Math.max(1, Math.ceil((s1 - s0) * A.steps)), smp = this._smp;
     for (let i = 1; i <= n && !A.done; i++) {
       const s = lerp(s0, s1, i / n); this.sample(F, A, s, smp);
+      if (A.kind === 'kick' && (s < KV[A.kv].on || s > KV[A.kv].off)) continue;
       if (F.trail && (i % 2 === 0 || i === n)) F.trail.push(smp.base, smp.tip);
       this.test(F, A, smp, s);
     }
@@ -4075,7 +4215,7 @@ const Combat = {
   },
 
   test(F, A, smp, s) {
-    const W = F.W, base = smp.base, tip = smp.tip, c1 = this._c1, c2 = this._c2, dir = A.kind === 'slash' ? smp.edge : smp.dir;
+    const W = A.kind === 'kick' ? KV[A.kv] : F.W, base = smp.base, tip = smp.tip, c1 = this._c1, c2 = this._c2, dir = A.kind === 'slash' || A.kind === 'kick' ? smp.edge : smp.dir;
     for (const V of Game.fighters) {
       if (V === F || V.rag || !V.alive || A.hit.has(V) || !this.hostile(F, V)) continue;
       const dx = V.pos.x - F.pos.x, dz = V.pos.z - F.pos.z; if (dx * dx + dz * dz > 20) continue;
@@ -4107,10 +4247,10 @@ const Combat = {
   },
 
   resolve(F, A, V, sg, p, dir) {
-    A.hit.add(V); A.hits++; if (A.hits >= F.W.cleave + A.cleaveX) A.done = true;
+    A.hit.add(V); A.hits++; if (A.hits >= (A.kind === 'kick' ? KV[A.kv] : F.W).cleave + A.cleaveX) A.done = true;
     if (V.inv > 0) { if (V.isPlayer && V.action.type === 'dodge') Game.onPerfectDodge(V, F); if (F.net) Net.res('v', A.netId); return; }      // esquivé
     if (A.shove) { this.shoved(F, A, V, p, dir); return; }
-    const W = F.W, heavy = A.heavy; let zn = sg.zone;
+    const W = A.kind === 'kick' ? KV[A.kv] : F.W, heavy = A.heavy; let zn = sg.zone;
     if (V.blocking) {
       const toA = Math.atan2(F.pos.x - V.pos.x, F.pos.z - V.pos.z);
       if (Math.abs(angDiff(V.yaw, toA)) < 1.3) {
@@ -4120,7 +4260,7 @@ const Combat = {
       }
     }
     if (V.immortal) { V.flash = 0.12; V.flinch.set(-0.25, 0, rndS(0.3)); Sfx.punch(p); Fx.sparks(p, null, 5); Game.hitStop(0.03, V.isPlayer ? 0.1 : 0); return; }   // bac à sable : le joueur immortel n'est pas blessé
-    const type = A.kind === 'punch' || W.blunt ? 'blunt' : A.kind === 'thrust' ? 'pierce' : 'slash';
+    const type = A.kind === 'punch' || A.kind === 'kick' || W.blunt ? 'blunt' : A.kind === 'thrust' ? 'pierce' : 'slash';
     const zm = zn === 'head' ? 1.5 : zn === 'torso' ? 1 : 0.6, dmg = W.dmg * (heavy ? 1.6 : 1) * A.mult * (A.full ? 1.8 : 1) * F.dmgMul * zm * (V.isPlayer ? Game.enemyDmg : 1);
     // armure : elle encaisse une part des dégâts et peut arrêter le coup ; un coup lourd en ignore la moitié et l'use deux fois plus
     const pierce = heavy || A.full || A.exec, pc = V.armorAt(zn), red = pc ? V.armor.red * (pierce ? 0.5 : 1) : 0, stop = pc && Math.random() < red;
@@ -4136,10 +4276,11 @@ const Combat = {
       V.push.x += ((ax / ad) * 0.7 + dir.x * 0.3) * kb; V.push.z += ((az / ad) * 0.7 + dir.z * 0.3) * kb;
       V.flinch.set(-0.3 - Math.random() * 0.2, 0, rndS(0.35));
       const armored = V.boss && !heavy && V.action.type === 'attack' && V.action.phase > 0;
-      if (!armored) V.stagger(V.isPlayer ? 0.2 : A.breaker || A.full ? 1.0 : heavy ? 0.62 : 0.36);
+      if (A.kind === 'kick' && this.kickHit(F, A, V, zn, res, dir)) { /* projeté, balayé ou repoussé */ }
+      else if (!armored) V.stagger(V.isPlayer ? 0.2 : A.kind === 'kick' ? 0.55 : A.breaker || A.full ? 1.0 : heavy ? 0.62 : 0.36);
     }
-    if (res === 'fatal' && !V.dead) V.kill(type === 'pierce' ? 'transpercé' : 'assommé', this._d.copy(dir).multiplyScalar(2));
-    if (F.element !== 'steel' && res !== 'none' && res !== 'armor') {
+    if (res === 'fatal' && !V.dead) V.kill(type === 'pierce' ? 'transpercé' : 'assommé', this._d.copy(dir).multiplyScalar(A.kind === 'kick' ? (A.kv === 'k540' ? 11 : 5) : 2));
+    if (F.element !== 'steel' && A.kind !== 'kick' && res !== 'none' && res !== 'armor') {
       if (V.zones[zn].state !== 'severed') V.applyElem(zn, F.element);
       else { if (F.element === 'fire') { Fx.flame(p, 8, 0.3); Sfx.fire(p); } else if (F.element === 'ice') { Fx.shards(p, 10); Sfx.ice(p); } else { Fx.volt(p, 10); Sfx.zap(p); } }
       if (F.element === 'bolt' && zn === 'torso') {                             // la foudre saute au voisin
@@ -4153,9 +4294,25 @@ const Combat = {
     Game.onHit(F, V, zn, res, type, false);
   },
 
+  // ce que fait un coup de pied qui porte : le retourné projette au loin, le balayage fait tomber, les autres repoussent fort
+  kickHit(F, A, V, zn, res, dir) {
+    if (V.rag || V.net) return false;
+    const ax = V.pos.x - F.pos.x, az = V.pos.z - F.pos.z, ad = Math.hypot(ax, az) || 1, ux = ax / ad, uz = az / ad;
+    if (A.kv === 'k540') {
+      V.launch(ux * 0.8 + dir.x * 0.2, uz * 0.8 + dir.z * 0.2, KV.k540.launch * (V.boss ? 0.35 : 1) / Math.sqrt(V.scale), F);
+      Gfx.shake = Math.max(Gfx.shake, 0.16); Game.hitStop(0.08, F.isPlayer || V.isPlayer ? 0.24 : 0);
+      if (F.isPlayer) Game.onCombo(F, 'Projeté !');
+      return true;
+    }
+    if (A.kv === 'low' && zn.startsWith('leg') && !V.boss && Math.random() < 0.65) { V.knockdown(V.isPlayer ? 1.0 : 1.6); Game.hitStop(0.05, F.isPlayer || V.isPlayer ? 0.14 : 0); return true; }
+    if (A.kv === 'round' && zn === 'head' && !V.boss && Math.random() < 0.45) { V.launch(ux, uz, 2.6 / Math.sqrt(V.scale), F); Game.hitStop(0.05, F.isPlayer || V.isPlayer ? 0.14 : 0); return true; }
+    if (A.kv === 'front') { V.push.x += ux * 6; V.push.z += uz * 6; }
+    return false;
+  },
+
   // garde : la fenêtre de parade ne dure qu'un instant après l'appui ; tenir la garde bloque mal et coûte cher
   blocked(F, A, V, p, dir) {
-    const W = F.W, heavy = A.heavy, parry = V.isPlayer ? (!!V.action.win && V.action.t <= 0.2) : !!V.action.parry;
+    const W = A.kind === 'kick' ? KV[A.kv] : F.W, heavy = A.heavy, parry = V.isPlayer ? (!!V.action.win && V.action.t <= 0.2) : !!V.action.parry;
     const cp = V.weapon && V.weapon.obj.visible && V.W.kind !== 'fist' ? this._k.copy(V.weapon.obj.position).addScaledVector(V.wDirW, 0.35 * V.scale) : this._k.copy(p);
     Fx.sparks(cp, null, parry ? 28 : 10); Sfx.clang(cp, parry);
     A.done = true; A.sEnd = Math.max(0.05, A.sPrev);
@@ -4175,7 +4332,7 @@ const Combat = {
       if (A.phase === 1) { A.phase = 2; A.pt = 0; A.rec *= 1.25; }
     }
     if (F.trail) { F.trail.stop(); F.trail = null; }
-    if (F.element === 'bolt' && !parry && V.W.kind !== 'fist') {                 // l'acier conduit la foudre
+    if (F.element === 'bolt' && A.kind !== 'kick' && !parry && V.W.kind !== 'fist') {                 // l'acier conduit la foudre
       const z = V.zones['arm' + V.heldSide]; if (z.state === 'ok') { z.shock = Math.max(z.shock, 1.2); V.caps(); Sfx.zap(cp); Fx.volt(cp, 8); }
     }
     Game.hitStop(parry ? 0.12 : 0.04, F.isPlayer || V.isPlayer ? (parry ? 0.22 : 0.12) : 0);
@@ -4184,18 +4341,18 @@ const Combat = {
 
   // coup sur un corps à terre (cadavre, blessé au sol, membre tranché)
   hitBody(F, A, b, bn, p, dir) {
-    A.hit.add(b); A.hits++; if (A.hits >= F.W.cleave) A.done = true;
-    const W = F.W, k = W.knock * (A.heavy ? 1.6 : 1) * 1.1; b.wake();
+    A.hit.add(b); A.hits++; if (A.hits >= (A.kind === 'kick' ? KV[A.kv] : F.W).cleave) A.done = true;
+    const W = A.kind === 'kick' ? KV[A.kv] : F.W, k = W.knock * (A.heavy ? 1.6 : 1) * 1.1; b.wake();
     const pts = bn.type === 0 || bn.type === 3 ? [bn.pa, bn.pb] : [bn.pl, bn.pr, bn.pc];
     for (const q of pts) b.push(q, dir.x * k + rndS(0.5), Math.abs(dir.y) * k * 0.4 + 0.7, dir.z * k + rndS(0.5));
-    const V = b.owner, sg = bn.seg, type = A.kind === 'punch' || W.blunt ? 'blunt' : A.kind === 'thrust' ? 'pierce' : 'slash';
+    const V = b.owner, sg = bn.seg, type = A.kind === 'punch' || A.kind === 'kick' || W.blunt ? 'blunt' : A.kind === 'thrust' ? 'pierce' : 'slash';
     let res = 'flesh', zn = null;
     if (V && sg && sg.state !== 'gone' && (b === V.rag || b === V.rag2)) {
       zn = sg.zone;
       if (!V.dead && !V.immortal) V.hp -= W.dmg * (A.heavy ? 1.6 : 1) * F.dmgMul;
       res = V.wound(zn, sg, p, type, dir);
       if (res === 'fatal' && !V.dead) V.kill(type === 'pierce' ? 'transpercé' : 'assommé');
-      if (F.element === 'fire') { Fx.flame(p, 8, 0.3); if (V.zones[zn].state !== 'severed') { V.zones[zn].burn = 4; } }
+      if (F.element === 'fire' && A.kind !== 'kick') { Fx.flame(p, 8, 0.3); if (V.zones[zn].state !== 'severed') { V.zones[zn].burn = 4; } }
       Game.onHit(F, V, zn, res, type, true);
     }
     this.feedback(F, V, zn, res, p, dir, type, true);
@@ -4364,6 +4521,7 @@ const Player = {
     if (Input.hvP || Input.hit('Water')) Powers.cast(P);
     if (Input.hit('KeyX') || Input.hit('Kunai')) Kunai.throw(P);
     if (Input.hit('KeyZ')) this.shove(P);
+    if (Input.hit('KeyC') || Input.hit('Kick')) this.kick(P);
     if (Input.hit('KeyG') && Game.mode !== 'sandbox') Game.drink();
     const fv = this.fin = this.downed(P);
     const hvP = Input.hit('KeyQ'), any = Input.lmbP || hvP;
@@ -4408,6 +4566,7 @@ const Player = {
   swap(P, id) { if (P.busy || id === P.weaponId) return; P.equip(id); P.setElement(Game.elem); Game.weapon = id; Sfx.ui(); HUD.weapons(); },
   // combos : G = coup léger, L = coup lourd. Le préfixe vient de ce qui précède : parade (P), dash (D), course (S) ou la suite en cours
   attack(P, heavy) {
+    if (P.W.legs) { this.kickAtk(P, heavy); return; }
     const t = this.target, tg = t ? { victim: t.live ? t.F : null, body: t.live ? null : t.body, zone: t.zone, point: t.point.clone() } : null;
     if (!tg) P.yawT = this.yaw;
     if (tg && tg.victim && tg.victim.action.type === 'down' && !LOCKS[this.lock]) {      // ennemi à terre, viseur libre : on frappe la partie du corps la plus proche
@@ -4433,6 +4592,25 @@ const Player = {
     }
   },
   prefixOk(key) { for (const k in COMBOS) if (k.startsWith(key)) return true; return false; },
+  // style des jambes : on ne frappe qu'avec les pieds ; clic gauche enchaîne face, circulaire, balayage ; coup lourd, dash ou course : retourné sauté
+  kickAtk(P, heavy) {
+    const t = this.target, tg = t && t.live ? { victim: t.F, zone: t.zone, point: t.point.clone() } : null;
+    if (!tg) P.yawT = this.yaw;
+    const now = Game.t; if (now - this.chainT > 0.8) this.kseq = 0;
+    let kv;
+    if (heavy || now - this.dashT < 0.55 || this.sprint) { kv = 'k540'; this.dashT = -9; }
+    else { this.kseq = (this.kseq || 0) + 1; kv = ['front', 'round', 'low', 'round'][(this.kseq - 1) % 4]; if (tg && tg.zone && tg.zone.startsWith('leg')) kv = 'low'; }
+    if (Combat.start(P, tg, { kind: 'kick', kv, combo: this.kseq || 0 })) { this.lastAtk = now; this.chainT = now; this.seq = ''; AI.onThreat(P); HUD.combo(KV[kv].name); if (heavy) Game.stats.heavy = (Game.stats.heavy || 0) + 1; }
+  },
+  // coup de pied retourné : on tourne le dos, on saute, le pied passe à hauteur de tête
+  kick(P) {
+    const t = P.action.type; if (P.rag || !P.canAct || t === 'stagger' || t === 'stun' || t === 'down' || t === 'cast' || (t === 'attack' && (P.action.phase < 2 || P.action.kind === 'kick')) || (t === 'dodge' && P.action.t < 0.09)) return;
+    if (!P.legOK.L && !P.legOK.R) return;
+    if (P.blocking || t === 'dodge') P.idle();
+    const tg = this.target, o = tg && tg.live ? { victim: tg.F, zone: 'head', point: tg.F.zonePoint('head', new V3()) } : null;
+    if (!o) P.yawT = this.yaw;
+    if (Combat.start(P, o, { kind: 'kick' })) { this.seq = ''; this.lastAtk = Game.t; AI.onThreat(P); HUD.combo('Coup de pied retourné'); Game.stats.kick = (Game.stats.kick || 0) + 1; }
+  },
   // bourrade de la main libre
   shove(P) {
     const t = P.action.type; if (P.rag || t === 'stagger' || t === 'stun' || t === 'dodge' || (t === 'attack' && P.action.phase < 2)) return;
@@ -4667,6 +4845,49 @@ Object.assign(Fighter.prototype, {
     pc.meshes.length = 0;
     Fx.sparks(c, null, 18); Sfx.clang(c, true); Sfx.crack(c);
     Game.onArmorBreak(this, zn);
+  },
+  // projeté au loin (coup de pied retourné) : il vole sur le dos, retombe et glisse ; en vol il renverse ceux qu'il percute
+  launch(dx, dz, dist, by) {
+    if (this.rag || !this.alive) return false;
+    const d = Math.hypot(dx, dz) || 1, T = clamp(0.3 + dist * 0.06, 0.3, 0.75), v = dist / T;
+    if (!this.knockdown(T + 1.05)) return false;
+    this.action.fly = { vx: (dx / d) * v, vz: (dz / d) * v, T, H: clamp(0.25 + dist * 0.09, 0.2, 0.9), dist, by: by || null, hit: new Set([this]), team: by ? by.team : null };
+    this.yaw = this.yawT = Math.atan2(-dx, -dz);                                 // il part en arrière, face à celui qui l'a frappé
+    if (this.isPlayer) Gfx.shake = Math.max(Gfx.shake, 0.12);
+    return true;
+  },
+  // vol : déplacement, mur, et quilles renversées sur le passage
+  fly(dt) {
+    const A = this.action, f = A.fly; if (!f || f.done) return;
+    if (A.t >= f.T) {                                                          // retombée : il glisse encore un peu
+      f.done = true; this.push.x += f.vx * 0.28; this.push.z += f.vz * 0.28;
+      Sfx.thud(this.pos, 1); Fx.dust((this._flyV || (this._flyV = new V3())).set(this.pos.x, 0.05, this.pos.z), 9, 0.4); Gfx.shake = Math.max(Gfx.shake, this.isPlayer ? 0.1 : 0.06);
+      return;
+    }
+    if (this.net) return;                                                      // duel : la position du double vient du réseau
+    const x0 = this.pos.x, z0 = this.pos.z;
+    this.pos.x += f.vx * dt; this.pos.z += f.vz * dt;
+    const lx = Env.bx - this.radius - 0.12, lz = Env.bz - this.radius - 0.12;
+    if (Math.abs(this.pos.x) > lx || Math.abs(this.pos.z) > lz) {               // le mur l'arrête net
+      this.pos.x = clamp(this.pos.x, -lx, lx); this.pos.z = clamp(this.pos.z, -lz, lz); f.vx *= -0.15; f.vz *= -0.15; A.t = Math.max(A.t, f.T - 0.05);
+      Sfx.thud(this.pos, 1); Gfx.shake = Math.max(Gfx.shake, 0.12);
+    }
+    const sp = Math.hypot(f.vx, f.vz); if (sp < 2) return;
+    for (const o of Game.fighters) {
+      if (f.hit.has(o) || o === f.by || o.rag || !o.alive || o.gone || (f.team && o.team === f.team)) continue;
+      const dx = o.pos.x - this.pos.x, dz = o.pos.z - this.pos.z, rr = this.radius + o.radius + 0.25;
+      if (dx * dx + dz * dz > rr * rr) continue;
+      f.hit.add(o);
+      if (!o.immortal) o.hp -= 6; o.flash = 0.12; Sfx.punch(o.pos); Fx.dust((this._flyV || (this._flyV = new V3())).set(o.pos.x, 0.3, o.pos.z), 8, 0.35);
+      const left = sp * Math.max(0, f.T - A.t);                                  // ce qui restait du vol passe en partie à celui qu'on percute
+      if (o.net) { /* duel : chez lui */ }
+      else if (!o.boss) { if (o.launch(f.vx, f.vz, clamp(Math.max(left, f.dist || 0) * 0.6, 2.2, 5), f.by)) o.action.fly.hit = f.hit; }     // la quille part à son tour ; chacun n'est renversé qu'une fois par la même chaîne
+      else o.stagger(0.5);
+      f.vx *= 0.8; f.vz *= 0.8;
+      if (f.by && f.by.isPlayer) Game.onCombo(f.by, 'Renversé !');
+      if (o.ai && !o.rag) AI.onHurt(o, f.by || this, 'flesh');
+    }
+    if (!Number.isFinite(this.pos.x + this.pos.z)) { this.pos.set(x0, 0, z0); f.done = true; }
   },
   // jeté à terre sur le dos, puis il se relève
   knockdown(dur) {
@@ -5313,7 +5534,7 @@ const newCode = () => { let c = ''; for (let i = 0; i < 4; i++) c += CODE_ABC[Ma
 const cleanCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
 
 // options d'une attaque, sous forme compacte
-const OPT_KEYS = [['combo', 'c'], ['heavy', 'h'], ['kind', 'k'], ['mult', 'm'], ['knockK', 'kk'], ['cleave', 'cl'], ['double', 'd'], ['wide', 'w'], ['breaker', 'b'], ['exec', 'x'], ['spin', 'sp'], ['rise', 'ri'], ['run', 'ru'], ['over', 'ov'], ['lunge', 'lu'], ['windK', 'wk'], ['finisher', 'f'], ['behead', 'bh'], ['shove', 'sh']];
+const OPT_KEYS = [['combo', 'c'], ['heavy', 'h'], ['kind', 'k'], ['mult', 'm'], ['knockK', 'kk'], ['cleave', 'cl'], ['double', 'd'], ['wide', 'w'], ['breaker', 'b'], ['exec', 'x'], ['spin', 'sp'], ['rise', 'ri'], ['run', 'ru'], ['over', 'ov'], ['lunge', 'lu'], ['windK', 'wk'], ['finisher', 'f'], ['behead', 'bh'], ['shove', 'sh'], ['kv', 'kv']];
 const OPT_NUM = { combo: [0, 0, 6], mult: [1, 0.4, 2.5], knockK: [1, 0.3, 3], cleave: [0, 0, 3], windK: [1, 0.4, 2] };
 
 // ---------------------------------------------------------------- duel
@@ -5592,7 +5813,7 @@ const Net = {
       else if (A.type === 'cast') this.note('c', A.el);
       else if (A.type === 'stagger') this.note('s', r2(A.dur), String(A.kind || 'hit'));
       else if (A.type === 'stun') this.note('u', r2(A.dur), A.still ? 1 : 0);
-      else if (A.type === 'down') this.note('n', r2(A.dur - 0.45));
+      else if (A.type === 'down') this.note('n', r2(A.dur - 0.45), A.fly ? [r2(A.fly.vx), r2(A.fly.vz), r2(A.fly.T), r2(A.fly.H)] : 0);
       else if (A.type === 'idle' && prev && prev.type === 'block') this.note('i');
     }
     if (A.type === 'attack' && A.phase === 0 && !A.held && !A.qSent && !A.relSent && !A.finisher && !A.shove) { A.qSent = true; this.note('q', A.netId || 0); }      // relâché avant la fin de l'armé : pas de coup chargé
@@ -5609,7 +5830,8 @@ const Net = {
     const o = {}; if (!r || typeof r !== 'object') return o;
     for (const [k, s] of OPT_KEYS) {
       if (!(s in r)) continue; const v = r[s];
-      if (k === 'kind') { if (v === 'slash' || v === 'thrust' || v === 'punch') o.kind = v; }
+      if (k === 'kind') { if (v === 'slash' || v === 'thrust' || v === 'punch' || v === 'kick') o.kind = v; }
+      else if (k === 'kv') { if (typeof v === 'string' && KV[v]) o.kv = v; }
       else if (OPT_NUM[k]) { const [d, lo, hi] = OPT_NUM[k]; o[k] = num(v, d, lo, hi); }
       else o[k] = !!v;
     }
@@ -5671,7 +5893,12 @@ const Net = {
     else if (k === 'k') { if (fresh) Kunai.throwNet(R, ZONES.includes(e[3]) ? e[3] : null); }
     else if (k === 's') { R.stagger(num(e[3], 0.4, 0.05, 3), typeof e[4] === 'string' ? e[4].slice(0, 8) : 'hit'); }
     else if (k === 'u') { R.stun(num(e[3], 1, 0.05, 6)); if (e[4] && R.action.type === 'stun') R.action.still = true; }
-    else if (k === 'n') { R.knockdown(num(e[3], 2, 0.2, 6)); }
+    else if (k === 'n') {
+      if (R.knockdown(num(e[3], 2, 0.2, 6)) && Array.isArray(e[4]) && e[4].length === 4) {     // projeté : on rejoue le vol (la position, elle, vient du réseau)
+        const f = e[4]; R.action.fly = { vx: num(f[0], 0, -30, 30), vz: num(f[1], 0, -30, 30), T: num(f[2], 0.4, 0.1, 1), H: num(f[3], 0.4, 0, 1.5), by: null, hit: new Set([R]), team: null };
+        R.yaw = R.yawT = Math.atan2(-R.action.fly.vx, -R.action.fly.vz);
+      }
+    }
     else if (k === 'g') { Sfx.pickup(); }
     else if (k === 'e') { if (WEAPONS[e[3]] && R.weaponId !== e[3] && !R.rag) { R.equip(e[3]); R.caps(); } if (ELEMENTS[e[4]] && R.element !== e[4] && R.weapon) R.setElement(e[4]); }
   },
@@ -5685,7 +5912,7 @@ const Net = {
       if (!P.rag && P.action.type === 'down') P.action.dur = Math.max(P.action.dur, P.action.t + 1.3);      // on ne se relève pas sous la lame
     } else if (ZONES.includes(zone) && P && !P.rag && P.alive && P.zones[zone].state !== 'severed') tgt = { victim: P, zone, point: P.zonePoint(zone, new V3()) };
     if (R.action.type !== 'idle' && R.action.type !== 'block' && R.action.type !== 'attack') R.idle();   // chez lui, sa réaction est déjà finie
-    if (Combat.start(R, tgt, o)) { const A = R.action; A.netId = typeof id === 'number' ? id : 0; A.netHold = !o.finisher && !o.shove; A.netWait = 0; A.netAt = Date.now(); if (A.netHold) A.wind += 0.05; }
+    if (Combat.start(R, tgt, o)) { const A = R.action; A.netId = typeof id === 'number' ? id : 0; A.netHold = !o.finisher && !o.shove && o.kind !== 'kick'; A.netWait = 0; A.netAt = Date.now(); if (A.netHold) A.wind += 0.05; }
   },
   // résultat d'un de mes coups, jugé chez l'adversaire
   applyRes(e) {
@@ -5906,7 +6133,7 @@ const HUD = {
     const P = Game.player, cur = P ? P.weaponId : 'katana', el = P ? P.element : 'steel';
     let h = '';
     WEAPON_ORDER.forEach((w, i) => { const own = Game.owns(w); h += '<div class="wslot' + (w === cur ? ' on' : '') + (own ? '' : ' lock') + '"><kbd>' + (i + 1) + '</kbd><span>' + (own ? WEAPONS[w].short : '?') + '</span></div>'; });
-    h += '<div id="h-elem" class="' + el + '"><kbd>' + (CFG.touch ? 'Lame' : KeyName.KeyE) + '</kbd><b>' + (cur === 'fists' ? '—' : ELEMENTS[el].name) + '</b></div>';
+    h += '<div id="h-elem" class="' + el + '"><kbd>' + (CFG.touch ? 'Lame' : KeyName.KeyE) + '</kbd><b>' + (WEAPONS[cur] && WEAPONS[cur].kind === 'fist' ? '—' : ELEMENTS[el].name) + '</b></div>';
     h += '<div id="h-zone"><kbd>' + (CFG.touch ? 'Cible' : 'Molette') + '</kbd><b id="h-zone-t"></b></div>';
     h += '<div id="h-water"><kbd>' + (CFG.touch ? 'Pouvoir' : 'Clic molette') + '</kbd><b>Eau prête</b></div>';
     h += '<div id="h-kunai"><kbd>' + (CFG.touch ? 'Lancer' : KeyName.KeyX) + '</kbd><b>Kunai</b></div>';
@@ -5927,16 +6154,16 @@ const HUD = {
   ring(ok) { const r = $('pring'); r.className = ''; void r.offsetWidth; r.className = ok ? 'go' : 'no'; },
   refreshKeys() {
     const K = KeyName, mv = K.KeyW + K.KeyA + K.KeyS + K.KeyD, k = (s) => '<kbd>' + s + '</kbd>';
-    $('h-help').innerHTML = k(mv) + 'bouger ' + k('Maj') + 'courir ' + k('Espace') + 'dash<br>' + k('Molette') + 'membre visé ' + k(K.KeyT) + 'viseur libre<br>' + k('Clic G') + 'frapper ' + k(K.KeyQ) + 'coup lourd<br>' + k('Clic D') + 'parade : appuyer à l\'éclat de l\'arme<br>' + k('Clic molette') + 'pouvoir de la lame<br>' + k(K.KeyX) + 'kunai ' + k(K.KeyZ) + 'repousser<br>' + k(K.KeyE) + 'lame ' + k('1-8') + 'armes ' + k(K.KeyF) + 'ramasser';
+    $('h-help').innerHTML = k(mv) + 'bouger ' + k('Maj') + 'courir ' + k('Espace') + 'dash<br>' + k('Molette') + 'membre visé ' + k(K.KeyT) + 'viseur libre<br>' + k('Clic G') + 'frapper ' + k(K.KeyQ) + 'coup lourd<br>' + k('Clic D') + 'parade : appuyer à l\'éclat de l\'arme<br>' + k('Clic molette') + 'pouvoir de la lame<br>' + k(K.KeyX) + 'kunai ' + k(K.KeyZ) + 'repousser ' + k(K.KeyC) + 'coup de pied<br>' + k(K.KeyE) + 'lame ' + k('1-8') + 'armes ' + k(K.KeyF) + 'ramasser';
     const rows = CFG.touch
-      ? [['Pouce gauche', 'se déplacer'], ['Pouce droit', 'tourner la caméra'], ['Cible', 'choisir le membre à frapper : tête, bras, torse, jambes'], ['Frapper', 'toucher : coup léger · maintenir : coup lourd, qui perce la moitié de l\'armure · la liste des combos est dans le menu pause'], ['Garde', 'toucher quand l\'arme ennemie lance un éclat : parade'], ['Dash', 'bond rapide dans la direction du pouce'], ['Pouvoir', 'pouvoir de la lame choisie (recharge 6 s) · près d\'un ennemi à terre, Frapper l\'achève'], ['Kunai', 'lance un couteau sur l\'ennemi visé · 5 par vague'], ['Lame', 'acier, feu, glace, foudre']]
-      : [[mv, 'se déplacer · Maj pour courir'], ['Espace', 'dash (ou deux appuis rapides sur une direction)'], ['Molette', 'choisir le membre à frapper : tête, bras, torse, jambes · ' + K.KeyT + ' : viseur libre'], ['Clic gauche', 'coup léger'], [K.KeyQ, 'coup lourd (aussi : clic gauche maintenu) · il perce la moitié de l\'armure'], ['Clic droit', 'parade : appuyer quand l\'arme ennemie lance un éclat'], ['Clic molette', 'pouvoir de la lame, recharge 6 s · acier : l\'eau saisit le pied et fait tomber · foudre : éclairs du bout des doigts · feu : boule de feu · glace : souffle glacé'], ['Parade parfaite', 'onde de choc : l\'âme de l\'ennemi est projetée hors de son corps, il reste sonné 1,5 s'], ['Garde ennemie', 'à force de bloquer, surtout face à une arme plus lourde, l\'ennemi lâche son arme ou elle se brise'], ['Ennemi à terre', 'clic gauche à moins de 2 m : mise à mort (tête visée : décapitation) · ' + K.KeyQ + ' : coup normal'], [K.KeyX, 'lancer un kunai sur le membre visé · 5 par vague, un de plus à chaque mise à mort'], [K.KeyG, 'gourde de saké, une par vague : rend de la vie et du sang, calme les saignements'], ['Dash', 'traverser un coup au dernier moment : esquive parfaite, le temps ralentit'], [K.KeyZ, 'bourrade de la main libre : repousse, casse la garde, interrompt un coup'], ['Combos', 'douze enchaînements de coups légers et lourds : la liste reste affichée à droite pendant le combat'], ['Claymore', 'coup lourd maintenu jusqu\'à l\'éclat doré : tranche un membre en un seul coup'], ['Arme et lame', 'en donjon, on les choisit au menu puis entre deux vagues ; bac à sable : ' + K.KeyE + ' change de lame, 1 à 8 d\'arme, ' + K.KeyF + ' ramasse'], ['Tab', 'afficher ou masquer l\'interface complète : aide, combos, armes, état du corps'], ['Échap', 'pause']];
+      ? [['Pouce gauche', 'se déplacer'], ['Pouce droit', 'tourner la caméra'], ['Cible', 'choisir le membre à frapper : tête, bras, torse, jambes'], ['Frapper', 'toucher : coup léger · maintenir : coup lourd, qui perce la moitié de l\'armure · la liste des combos est dans le menu pause'], ['Garde', 'toucher quand l\'arme ennemie lance un éclat : parade'], ['Dash', 'bond rapide dans la direction du pouce'], ['Pouvoir', 'pouvoir de la lame choisie (recharge 6 s) · près d\'un ennemi à terre, Frapper l\'achève'], ['Kunai', 'lance un couteau sur l\'ennemi visé · 5 par vague'], ['Pied', 'coup de pied retourné : on tourne le dos, on saute et le pied part à hauteur de tête · il projette l\'ennemi au loin, qui renverse ceux qu\'il percute'], ['Jambes', 'style sans arme, uniquement les pieds · Frapper enchaîne coup de face, circulaire et balayage · maintenir Frapper : retourné qui projette'], ['Lame', 'acier, feu, glace, foudre']]
+      : [[mv, 'se déplacer · Maj pour courir'], ['Espace', 'dash (ou deux appuis rapides sur une direction)'], ['Molette', 'choisir le membre à frapper : tête, bras, torse, jambes · ' + K.KeyT + ' : viseur libre'], ['Clic gauche', 'coup léger'], [K.KeyQ, 'coup lourd (aussi : clic gauche maintenu) · il perce la moitié de l\'armure'], ['Clic droit', 'parade : appuyer quand l\'arme ennemie lance un éclat'], ['Clic molette', 'pouvoir de la lame, recharge 6 s · acier : l\'eau saisit le pied et fait tomber · foudre : éclairs du bout des doigts · feu : boule de feu · glace : souffle glacé'], ['Parade parfaite', 'onde de choc : l\'âme de l\'ennemi est projetée hors de son corps, il reste sonné 1,5 s'], ['Garde ennemie', 'à force de bloquer, surtout face à une arme plus lourde, l\'ennemi lâche son arme ou elle se brise'], ['Ennemi à terre', 'clic gauche à moins de 2 m : mise à mort (tête visée : décapitation) · ' + K.KeyQ + ' : coup normal'], [K.KeyX, 'lancer un kunai sur le membre visé · 5 par vague, un de plus à chaque mise à mort'], [K.KeyG, 'gourde de saké, une par vague : rend de la vie et du sang, calme les saignements'], ['Dash', 'traverser un coup au dernier moment : esquive parfaite, le temps ralentit'], [K.KeyZ, 'bourrade de la main libre : repousse, casse la garde, interrompt un coup'], [K.KeyC, 'coup de pied retourné : on tourne le dos, on saute, le pied part à hauteur de tête · il projette l\'ennemi au loin, et celui-ci renverse ceux qu\'il percute'], ['Jambes (arme 9)', 'style sans arme, uniquement les pieds · clic gauche enchaîne coup de face, circulaire et balayage (jambes visées : balayage qui fait tomber) · coup lourd, après un dash ou en courant : retourné qui projette'], ['Combos', 'douze enchaînements de coups légers et lourds : la liste reste affichée à droite pendant le combat'], ['Claymore', 'coup lourd maintenu jusqu\'à l\'éclat doré : tranche un membre en un seul coup'], ['Arme et lame', 'en donjon, on les choisit au menu puis entre deux vagues ; bac à sable : ' + K.KeyE + ' change de lame, 1 à 8 d\'arme, ' + K.KeyF + ' ramasse'], ['Tab', 'afficher ou masquer l\'interface complète : aide, combos, armes, état du corps'], ['Échap', 'pause']];
     const h = rows.map((r) => '<dt>' + k(r[0]) + '</dt><dd>' + r[1] + '</dd>').join('');
     $('m-keys').innerHTML = h; $('p-keys').innerHTML = h;
     const chip = (c) => (c === 'L' ? '<i class="l"></i>' : c === 'H' ? '<i class="h"></i>' : '<em>' + { P: 'Parade', D: 'Dash', S: 'Course' }[c] + '</em>');
     let cl = '<b>Combos</b><small><i class="l"></i> ' + (CFG.touch ? 'toucher Frapper' : 'clic gauche') + ' &nbsp;<i class="h"></i> coup lourd : ' + (CFG.touch ? 'maintenir Frapper' : K.KeyQ + ' ou clic maintenu') + '</small>';
     for (const key in COMBOS) cl += '<div class="cb' + (COMBOS[key].o.exec ? ' x' : '') + '"><span>' + COMBOS[key].name + '</span><span class="sq">' + key.split('').map(chip).join('') + '</span></div>';
-    cl += '<small><u>En rouge</u> : tranche net, en un seul coup' + (CFG.touch ? '' : ' · ' + k(K.KeyC) + 'masquer') + '</small>';
+    cl += '<small><u>En rouge</u> : tranche net, en un seul coup' + (CFG.touch ? '' : ' · ' + k(K.KeyO) + 'masquer') + '</small>';
     $('h-combos').innerHTML = cl; $('p-combos').innerHTML = cl;
     $('h-side').innerHTML = '<b>Outils du bac à sable</b><br>' + k(K.KeyG) + 'changer d\'arène<br>' + k(K.KeyH) + 'changer d\'armure<br>' + k(K.KeyJ) + 'armure des ennemis<br>' + k(K.KeyN) + 'mannequin ' + k(K.KeyB) + 'ennemi<br>' + k(K.KeyV) + 'type : <span id="sb-type">Rōnin déchu</span><br>' + k(K.KeyK) + 'tout nettoyer ' + k(K.KeyL) + 'ralenti<br>' + k(K.KeyI) + 'immortel ' + k(K.KeyP) + 'figer l\'IA';
     if (Game.player) this.weapons();
@@ -5999,7 +6226,7 @@ const Game = {
       if (e.code === 'Enter' && this.state === 'rest') this.next();
       else if (e.code === 'Escape' && this.state === 'pause') { e.preventDefault(); this.resume(); }
       else if (e.code === 'Tab' && this.state === 'play') { e.preventDefault(); HUD.setFull(!Save.data.hudFull); }
-      else if (e.code === 'KeyC' && this.state === 'play') HUD.toggleCombos();
+      else if (e.code === 'KeyO' && this.state === 'play') HUD.toggleCombos();
       else if (e.code === 'KeyM' && this.state === 'play') { Save.data.sound = !Save.data.sound; Sfx.setOn(Save.data.sound); $('o-sound').checked = Save.data.sound; }
     });
     // outils du bac à sable, aussi accessibles depuis la pause (tactile)
