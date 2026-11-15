@@ -1,0 +1,15 @@
+{
+  "name": "bottes-reacteurs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Modèle 3D de bottes à réacteurs (Three.js), page interactive et export GLB",
+  "scripts": {
+    "build": "node build.mjs",
+    "export": "node export.mjs"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.187.0"
+  }
+}
