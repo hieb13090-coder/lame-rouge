@@ -28,6 +28,7 @@ const html = `<!DOCTYPE html>
 <div class="hint">Glisser pour tourner · molette ou pincer pour zoomer</div>
 <div class="ui">
   <button id="thrust" class="on">Réacteurs : ON</button>
+  <button id="view">Vue : face / dos</button>
   <button id="rotate">Rotation auto : OFF</button>
 </div>
 <script>${js}</script>

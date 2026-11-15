@@ -16,7 +16,7 @@ scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
 const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 200);
 const q = new URLSearchParams(location.search);
-const az = (parseFloat(q.get('az')) || 0) * Math.PI / 180;
+const az = (q.has('az') ? parseFloat(q.get('az')) : 155) * Math.PI / 180;  // départ : 3/4 arrière, côté plaque
 camera.position.set(30 * Math.sin(az), 3.5, 30 * Math.cos(az));
 const controls = new OrbitControls(camera, canvas);
 controls.target.set(0, 5.2, 0);
@@ -62,6 +62,10 @@ let hover = 0;
 const state = { rotate: false };
 const btnThrust = document.getElementById('thrust');
 const btnRotate = document.getElementById('rotate');
+const btnView = document.getElementById('view');
+btnView.onclick = () => { // face <-> dos
+  const t = controls.target; camera.position.set(2 * t.x - camera.position.x, camera.position.y, 2 * t.z - camera.position.z); controls.update();
+};
 btnThrust.onclick = () => {
   thrust = !thrust;
   btnThrust.textContent = thrust ? 'Réacteurs : ON' : 'Réacteurs : OFF';
