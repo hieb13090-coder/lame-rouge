@@ -84,7 +84,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 ### Interface
 
 - Respecter la largeur téléphone (390 px) : pas de débordement horizontal, et les boutons tactiles (`#touch`, positionnés en absolu) ne doivent pas se chevaucher.
-- Bug connu, non corrigé : sur téléphone, en donjon, la boîte « Vague » du HUD chevauche les barres de vie.
+- Sur téléphone (hors duel), la boîte « Vague » est placée en haut à droite pour ne pas couvrir les barres de vie.
 
 ## Gameplay : invariants à ne pas casser
 

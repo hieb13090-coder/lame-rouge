@@ -460,7 +460,7 @@ const Game = {
   onParry(V, F) { if (V.isPlayer) { Player.parryT = this.t; this.stats.parries++; HUD.feed('Parade parfaite !', 'good'); this.hitStop(0.1, 0.2); Soul.blast(V, F); } else if (F.isPlayer) HUD.feed('Votre coup est paré', 'bad'); },
   onBlock(V, F) { if (F.isPlayer && Math.random() < 0.5) HUD.feed('Bloqué — visez les jambes ou frappez lourd'); else if (V.isPlayer) HUD.feed('Garde tardive : coup encaissé en partie', 'bad'); },
   onGuardBreak(V, F) { HUD.feed(V.isPlayer ? 'Votre garde est brisée' : 'Garde brisée !', V.isPlayer ? 'bad' : 'good'); },
-  hitStop(t, shake) { this.stopT = Math.max(this.stopT, t); if (shake) Gfx.shake = Math.max(Gfx.shake, shake); },
+  hitStop(t, shake) { this.stopT = Math.max(this.stopT, t); if (shake) { Gfx.shake = Math.max(Gfx.shake, shake); Gfx.punch = Math.max(Gfx.punch, Math.min(1, t * 9)); } },      // coup qui compte : la caméra serre et l'image file vers le centre
   addGib(b) { this.gibs.push(b); },
   addDrop(b) { this.drops.push(b); },
   pickup(b) {

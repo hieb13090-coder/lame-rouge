@@ -54,7 +54,7 @@ function mkCanvas(s, draw) { const c = document.createElement('canvas'); c.width
 
 // ---------------------------------------------------------------- moteur
 const Gfx = {
-  renderer: null, scene: null, camera: null, sun: null, w: 1, h: 1, shake: 0, weaponLight: null, composer: null, bloom: null, final: null, fov: 62, t: 0,
+  renderer: null, scene: null, camera: null, sun: null, w: 1, h: 1, shake: 0, weaponLight: null, composer: null, bloom: null, final: null, fov: 62, t: 0, punch: 0,
   init(canvas) {
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.12;
@@ -99,14 +99,15 @@ const Gfx = {
       c.addPass(new THREE.RenderPass(this.scene, this.camera));
       this.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.62, 0.55, 0.8); c.addPass(this.bloom);
       this.final = new THREE.ShaderPass({
-        uniforms: { tDiffuse: { value: null }, time: { value: 0 } },
+        uniforms: { tDiffuse: { value: null }, time: { value: 0 }, blur: { value: 0 } },
         vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
         fragmentShader: [
-          'uniform sampler2D tDiffuse; uniform float time; varying vec2 vUv;',
+          'uniform sampler2D tDiffuse; uniform float time; uniform float blur; varying vec2 vUv;',
           'float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
           'void main(){',
           '  vec2 d = vUv - 0.5; float r2 = dot(d, d);',
           '  vec3 c = vec3(texture2D(tDiffuse, vUv + d * r2 * 0.014).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - d * r2 * 0.014).b);',
+          '  if (blur > 0.0005) { vec3 a = c; for (int i = 1; i <= 5; i++) { float k = float(i) * blur; a += texture2D(tDiffuse, vUv - d * k).rgb; } c = a / 6.0; }',
           '  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));',
           '  c = mix(vec3(l), c, 1.14);',
           '  c *= mix(vec3(0.9, 0.97, 1.08), vec3(1.06, 1.0, 0.92), smoothstep(0.0, 0.5, l));',
@@ -132,7 +133,7 @@ const Gfx = {
   },
   render(dt) {
     this.t += dt || 0.016;
-    if (this.composer) { this.final.uniforms.time.value = this.t % 97; this.composer.render(); } else this.renderer.render(this.scene, this.camera);
+    if (this.composer) { this.final.uniforms.time.value = this.t % 97; this.final.uniforms.blur.value = this.punch * this.punch * 0.03; this.composer.render(); } else this.renderer.render(this.scene, this.camera);
   },
 };
 

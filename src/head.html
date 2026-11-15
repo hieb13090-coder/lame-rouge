@@ -277,6 +277,11 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
 #h-kunai.cd,#h-flask.cd{color:var(--washi-2);border-bottom-color:rgba(230,220,198,.3)}
 #t-kunai{right:calc(196px + env(safe-area-inset-right,0px));bottom:calc(186px + env(safe-area-inset-bottom,0px));width:52px;height:52px;font-size:11px}
 @media (max-width:720px){ #h-boss{left:max(16px,env(safe-area-inset-left,0px));top:auto;bottom:calc(292px + env(safe-area-inset-bottom,0px));transform:none;width:42vw} #edge i{transform-origin:50% 50%} }
+/* téléphone, hors duel : la boîte de vague passe à droite (elle couvrait les barres de vie) et la barre du chef reste au-dessus des boutons */
+@media (max-width:720px){
+  #hud.min:not(.duel) #h-wave{grid-area:target;justify-self:end;text-align:right}
+  #hud.min:not(.duel) #h-boss{top:auto}
+}
 /* duel sur téléphone : ma vie en haut à gauche, celle de l'adversaire en haut à droite, la manche et le score sous son nom */
 @media (max-width:720px){
   #hud.duel #h-wave,#hud.duel #h-target{display:none!important}

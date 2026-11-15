@@ -336,7 +336,8 @@ const Player = {
     cam.position.set(pv.x + dxn * d + rndS(sh) * 0.25, Math.max(0.3, pv.y + sp * d + rndS(sh) * 0.2), pv.z + dzn * d + rndS(sh) * 0.25);
     this._d.set(cam.position.x + fx * cp, cam.position.y - sp, cam.position.z + fz * cp); cam.lookAt(this._d);
     // le champ s'ouvre un peu en course et pendant le dash : sensation de vitesse
-    const ft = 62 + (P.action.type === 'dodge' ? 9 : this.sprint ? 5 : 0); this.fov += (ft - this.fov) * (1 - Math.exp(-10 * dt));
+    if (Gfx.punch > 0) Gfx.punch = Math.max(0, Gfx.punch - dt * 2.6);
+    const ft = 62 + (P.action.type === 'dodge' ? 9 : this.sprint ? 5 : 0) - 8 * Gfx.punch; this.fov += (ft - this.fov) * (1 - Math.exp(-(Gfx.punch > 0.05 ? 22 : 10) * dt));
     if (Math.abs(cam.fov - this.fov) > 0.05) { cam.fov = this.fov; cam.updateProjectionMatrix(); }
     Sfx.ear.copy(cam.position);
   },
