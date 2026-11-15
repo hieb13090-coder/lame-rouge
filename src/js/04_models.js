@@ -190,6 +190,11 @@ const Models = {
   // --- armes : origine dans la main, +Y vers la pointe, tranchant vers +Z
   weaponGeo(id) {
     if (this.wcache[id]) return this.wcache[id];
+    if (typeof BLENDER !== 'undefined' && BLENDER[id]) {                         // modèle fait dans Blender (04a_blender.js), s'il existe
+      const f32 = (s) => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new Float32Array(u.buffer); };
+      const geo = (m) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(f32(m.p), 3)); g.setAttribute('normal', new THREE.BufferAttribute(f32(m.n), 3)); g.setAttribute('color', new THREE.BufferAttribute(f32(m.c), 3)); g.computeBoundingSphere(); return g; };
+      try { const B = BLENDER[id], out = { blade: B.blade ? geo(B.blade) : null, hilt: B.hilt ? geo(B.hilt) : null }; this.wcache[id] = out; return out; } catch (e) { /* modèle illisible : on garde le modèle en code */ }
+    }
     const st = 0xe3e8ee, st2 = 0xb7bfc8, wood = 0x6b4a2c, iron = 0x2a2a2e, gold = 0xb9902e; let b = [], h = [];
     if (id === 'katana') {
       h.push(gCyl(0.017, 0.017, 0.27, 0x1d1a22, 0, -0.085, 0, 0, 0, 0, 8), gCyl(0.02, 0.02, 0.02, gold, 0, -0.226, 0, 0, 0, 0, 8), gCyl(0.046, 0.046, 0.008, iron, 0, 0.056, 0, 0, 0, 0, 12), gBox(0.012, 0.03, 0.032, gold, 0, 0.076, 0));

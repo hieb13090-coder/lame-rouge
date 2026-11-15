@@ -67,7 +67,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 
 ### Armes, armures, effets
 
-- Armes : `Models.weaponGeo(id)` dans `04_models.js`. Les statistiques sont dans `WEAPONS` (`len` = longueur de lame utilisée pour les touches).
+- Armes : `Models.weaponGeo(id)` dans `04_models.js`. Si `BLENDER[id]` existe (fichier généré `src/js/04a_blender.js`), le modèle Blender remplace le modèle en code. Les modèles Blender sont des scripts Python dans `blender/` (ex. `blender/katana.py`), lancés avec le module `bpy` (`pip install bpy`, Blender 5.3) : `python3 blender/katana.py` régénère `04a_blender.js`. Ne jamais éditer ce fichier à la main. Les statistiques sont dans `WEAPONS` (`len` = longueur de lame utilisée pour les touches).
 - Armures : modèles et casse dans `08_armor_water.js`.
 
 ### Arènes, lumières, rendu
