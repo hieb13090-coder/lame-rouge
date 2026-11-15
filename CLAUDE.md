@@ -16,7 +16,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 - **Tout push sur `main` met le site à jour pour tous les joueurs** en une minute environ. Vérifier avant de pousser.
 - Toujours `npm run build` avant de committer, et committer le nouvel `index.html` avec les sources. Ne jamais éditer `index.html` à la main.
 - Pour un travail en cours, utiliser une branche et une pull request.
-- Demander l'accord avant toute action visible par d'autres : push sur `main`, publication, invitation.
+- Iheb veut que **chaque avancée validée soit poussée sur GitHub** (sur `main`, donc en ligne), une fois les tests passés. Les invitations et autres actions visibles restent soumises à son accord.
 
 ## Construction
 
