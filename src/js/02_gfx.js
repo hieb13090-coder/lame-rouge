@@ -159,7 +159,7 @@ const Env = {
   unload() {
     if (!this.group) return;
     Gfx.scene.remove(this.group);
-    this.group.traverse((o) => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) { if (m.map) m.map.dispose(); if (m.normalMap) m.normalMap.dispose(); m.dispose(); } });
+    this.group.traverse((o) => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) { if (m.map) m.map.dispose(); if (m.normalMap) m.normalMap.dispose(); if (m.roughnessMap) m.roughnessMap.dispose(); m.dispose(); } });
     this.group = null; this.obst.length = 0; this.gates.length = 0; this.lamps.length = 0; this.fires.length = 0; this.bigFires.length = 0; this.rain = null;
   },
   lamp(g, x, y, z, hex, base, dist) { if (CFG.lite && this.lamps.length >= 2) return; const L = new THREE.PointLight(col(hex), base, dist || 16, 2); L.position.set(x, y, z); g.add(L); this.lamps.push({ L, base, ph: Math.random() * 9 }); },
@@ -192,44 +192,12 @@ const Env = {
   // --- cour fermée : dojo (dalles, sable, lanternes) ou forteresse (boue, cendres, épaves en feu)
   court(g, burn) {
     const B = 17, S = CFG.lite ? 1024 : 2048, ppm = S / (2 * B);
-    const hC = document.createElement('canvas'); hC.width = hC.height = S; const hg = hC.getContext('2d');
-    const floorC = mkCanvas(S, (c) => {
-      if (burn) {                                                                // terre battue, boue, cendres
-        c.fillStyle = '#2a221c'; c.fillRect(0, 0, S, S); hg.fillStyle = '#808080'; hg.fillRect(0, 0, S, S);
-        for (let i = 0; i < 2600; i++) { const x = Math.random() * S, y = Math.random() * S, r = rnd(0.15, 1.3) * ppm, d = Math.random() < 0.5, q = c.createRadialGradient(x, y, 0, x, y, r), a = rnd(0.12, 0.4); q.addColorStop(0, d ? 'rgba(18,13,10,' + a + ')' : 'rgba(78,62,46,' + a + ')'); q.addColorStop(1, 'rgba(40,30,22,0)'); c.fillStyle = q; c.fillRect(x - r, y - r, r * 2, r * 2); const hq = hg.createRadialGradient(x, y, 0, x, y, r); hq.addColorStop(0, d ? 'rgba(40,40,40,' + a + ')' : 'rgba(215,215,215,' + a + ')'); hq.addColorStop(1, 'rgba(128,128,128,0)'); hg.fillStyle = hq; hg.fillRect(x - r, y - r, r * 2, r * 2); }
-        for (let i = 0; i < 60; i++) { const x = Math.random() * S, y = Math.random() * S, r = rnd(0.5, 2.2) * ppm, q = c.createRadialGradient(x, y, 0, x, y, r); q.addColorStop(0, 'rgba(150,146,140,' + rnd(0.1, 0.24) + ')'); q.addColorStop(1, 'rgba(150,146,140,0)'); c.fillStyle = q; c.fillRect(x - r, y - r, r * 2, r * 2); }
-        c.strokeStyle = 'rgba(12,9,7,0.5)'; hg.strokeStyle = 'rgba(30,30,30,0.7)'; c.lineWidth = hg.lineWidth = 0.14 * ppm; c.lineCap = hg.lineCap = 'round';
-        for (let i = 0; i < 9; i++) { let x = Math.random() * S, y = Math.random() * S, a = Math.random() * TAU; for (const k of [c, hg]) { k.beginPath(); k.moveTo(x, y); } for (let q = 0; q < 30; q++) { a += rndS(0.12); x += Math.cos(a) * ppm * 0.5; y += Math.sin(a) * ppm * 0.5; c.lineTo(x, y); hg.lineTo(x, y); } c.stroke(); hg.stroke(); }
-        for (let i = 0; i < 500; i++) { const x = Math.random() * S, y = Math.random() * S, r = rnd(0.02, 0.09) * ppm; c.fillStyle = 'rgb(' + ((70 + rnd(30)) | 0) + ',' + ((64 + rnd(26)) | 0) + ',' + ((58 + rnd(22)) | 0) + ')'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); hg.fillStyle = '#f0f0f0'; hg.beginPath(); hg.arc(x, y, r, 0, TAU); hg.fill(); }
-      } else {                                                                   // dalles de pierre et cercle de sable battu
-        c.fillStyle = '#3f3a33'; c.fillRect(0, 0, S, S); hg.fillStyle = '#3a3a3a'; hg.fillRect(0, 0, S, S);
-        const slab = 1.3 * ppm;
-        for (let r = 0; r * slab < S; r++) { let x = -Math.random() * slab; while (x < S) { const w = slab * rnd(0.8, 1.7), t = rnd(-13, 13), hh = (198 + rnd(-26, 26)) | 0; c.fillStyle = 'rgb(' + ((122 + t) | 0) + ',' + ((115 + t) | 0) + ',' + ((104 + t) | 0) + ')'; c.fillRect(x + 2, r * slab + 2, w - 4, slab - 4); hg.fillStyle = 'rgb(' + hh + ',' + hh + ',' + hh + ')'; hg.fillRect(x + 3, r * slab + 3, w - 6, slab - 6); x += w; } }
-        const cx = S / 2, R = 6.6 * ppm, gr = c.createRadialGradient(cx, cx, R * 0.2, cx, cx, R);
-        gr.addColorStop(0, 'rgba(146,134,110,0.94)'); gr.addColorStop(0.93, 'rgba(138,126,102,0.9)'); gr.addColorStop(1, 'rgba(138,126,102,0)');
-        c.fillStyle = gr; c.beginPath(); c.arc(cx, cx, R, 0, TAU); c.fill();
-        hg.fillStyle = 'rgba(178,178,178,0.96)'; hg.beginPath(); hg.arc(cx, cx, R * 0.97, 0, TAU); hg.fill();
-        c.strokeStyle = 'rgba(80,30,22,0.65)'; c.lineWidth = 0.16 * ppm; c.beginPath(); c.arc(cx, cx, R * 0.95, 0, TAU); c.stroke();
-        for (let i = 0; i < 90; i++) { const x = Math.random() * S, y = Math.random() * S, rr = rnd(0.4, 2) * ppm, q = c.createRadialGradient(x, y, 0, x, y, rr); q.addColorStop(0, 'rgba(34,28,23,' + rnd(0.14, 0.34) + ')'); q.addColorStop(1, 'rgba(34,28,23,0)'); c.fillStyle = q; c.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
-        c.strokeStyle = 'rgba(24,20,17,0.65)'; c.lineWidth = Math.max(1, ppm * 0.012); hg.strokeStyle = '#161616'; hg.lineWidth = Math.max(1.5, ppm * 0.02);
-        for (let i = 0; i < 80; i++) { let x = Math.random() * S, y = Math.random() * S, a = Math.random() * TAU; c.beginPath(); hg.beginPath(); c.moveTo(x, y); hg.moveTo(x, y); for (let k = 0; k < 7; k++) { a += rndS(0.7); x += Math.cos(a) * ppm * 0.22; y += Math.sin(a) * ppm * 0.22; c.lineTo(x, y); hg.lineTo(x, y); } c.stroke(); hg.stroke(); }
-      }
-      for (let i = 0; i < (S * S) / 520; i++) { const x = Math.random() * S, y = Math.random() * S, w = rnd(1, 3), dk = Math.random() < 0.5; c.fillStyle = dk ? 'rgba(20,16,13,' + rnd(0.06, 0.24) + ')' : 'rgba(226,216,196,' + rnd(0.03, 0.12) + ')'; c.fillRect(x, y, w, w); hg.fillStyle = dk ? 'rgba(0,0,0,' + rnd(0.1, 0.3) + ')' : 'rgba(255,255,255,' + rnd(0.08, 0.22) + ')'; hg.fillRect(x, y, w + 1, w + 1); }
-    });
-    const ftex = canvasTex(floorC); ftex.anisotropy = 8; const fnorm = new THREE.CanvasTexture(normalFromHeight(hC, burn ? 3.2 : 2.4)); fnorm.anisotropy = 4;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * B, 2 * B), new THREE.MeshStandardMaterial({ map: ftex, normalMap: fnorm, roughness: burn ? 0.8 : 0.86, metalness: 0, envMapIntensity: burn ? 0.9 : 0.6 }));
+    const FT = burn ? Tex.burntFloor(S, B) : Tex.dojoFloor(S, B, 6.6);           // textures peintes dans 02b_textures.js
+    if (burn) Tex.cracks(FT, 9, ppm, 0.5, 0.14, 0.5, 0.7); else Tex.cracks(FT, 40, ppm, 0.22, 0.015, 0.6, 0.8);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * B, 2 * B), Tex.mat(FT, burn ? 3.2 : 2.6, null, { envMapIntensity: burn ? 1.0 : 0.75 }));
     floor.rotation.x = -PI / 2; floor.receiveShadow = true; g.add(floor);
     // murs
-    const wb = burn ? [84, 82, 84] : [104, 98, 92];
-    const wallC = mkCanvas(512, (c, s) => {
-      c.fillStyle = '#231f1c'; c.fillRect(0, 0, s, s);
-      for (let r = 0; r < s / 64; r++) { let x = r % 2 ? -48 : 0; while (x < s) { const w = rnd(84, 132), t = rnd(-12, 12); c.fillStyle = 'rgb(' + ((wb[0] + t) | 0) + ',' + ((wb[1] + t) | 0) + ',' + ((wb[2] + t) | 0) + ')'; c.fillRect(x + 2, r * 64 + 2, w - 4, 60); x += w; } }
-      for (let i = 0; i < 2600; i++) { c.fillStyle = 'rgba(14,12,11,' + rnd(0.05, 0.24) + ')'; c.fillRect(Math.random() * s, Math.random() * s, rnd(1, 4), rnd(1, 4)); }
-      if (burn) { const q = c.createLinearGradient(0, 0, 0, s); q.addColorStop(0, 'rgba(8,6,5,0.75)'); q.addColorStop(0.6, 'rgba(8,6,5,0.1)'); q.addColorStop(1, 'rgba(8,6,5,0.35)'); c.fillStyle = q; c.fillRect(0, 0, s, s); }
-    });
-    const wallH = mkCanvas(512, (c, s) => { c.drawImage(wallC, 0, 0); const d = c.getImageData(0, 0, s, s), q = d.data; for (let i = 0; i < q.length; i += 4) { const v = q[i] > 60 ? 150 + (q[i] - 95) * 2.2 : 30; q[i] = q[i + 1] = q[i + 2] = v; } c.putImageData(d, 0, 0); });
-    const H = burn ? 8 : 6.4, rep = [9, H / 3.75], wnorm = new THREE.CanvasTexture(normalFromHeight(wallH, 2.6)); wnorm.wrapS = wnorm.wrapT = THREE.RepeatWrapping; wnorm.repeat.set(rep[0], rep[1]);
-    const wmat = new THREE.MeshStandardMaterial({ map: canvasTex(wallC, rep), normalMap: wnorm, roughness: 0.92, envMapIntensity: 0.5 });
+    const H = burn ? 8 : 6.4, wmat = Tex.mat(Tex.wall(CFG.lite ? 512 : 1024, burn), 2.4, [6, 1], { envMapIntensity: 0.5 });
     const deco = [], glow = [], wood = burn ? 0x1a1310 : 0x2a1d16, roof = burn ? 0x151416 : 0x1c2230;
     for (let k = 0; k < 4; k++) {
       const a = k * PI / 2, dx = Math.sin(a), dz = Math.cos(a);
@@ -285,17 +253,7 @@ const Env = {
   // --- pont de bois au-dessus du vide, sous l'orage
   bridge(g) {
     const bx = this.bx, bz = this.bz, len = 2 * bz + 14;
-    const hC = document.createElement('canvas'); hC.width = 512; hC.height = 1024; const hg = hC.getContext('2d');
-    const pc = document.createElement('canvas'); pc.width = 512; pc.height = 1024; const c = pc.getContext('2d');
-    c.fillStyle = '#120e0b'; c.fillRect(0, 0, 512, 1024); hg.fillStyle = '#202020'; hg.fillRect(0, 0, 512, 1024);
-    for (let r = 0; r < 26; r++) {
-      const y = r * (1024 / 26), h = 1024 / 26, t = rnd(-12, 12), hh = (190 + rnd(-30, 30)) | 0;
-      c.fillStyle = 'rgb(' + ((66 + t) | 0) + ',' + ((50 + t) | 0) + ',' + ((38 + t) | 0) + ')'; c.fillRect(0, y + 1.5, 512, h - 3); hg.fillStyle = 'rgb(' + hh + ',' + hh + ',' + hh + ')'; hg.fillRect(0, y + 2, 512, h - 4);
-      for (let i = 0; i < 14; i++) { c.fillStyle = 'rgba(20,14,10,' + rnd(0.1, 0.35) + ')'; const yy = y + rnd(3, h - 3); c.fillRect(rnd(0, 400), yy, rnd(40, 220), 1); hg.fillStyle = 'rgba(0,0,0,0.25)'; hg.fillRect(rnd(0, 400), yy, rnd(40, 220), 1); }
-      for (const x of [30, 256, 482]) { c.fillStyle = '#0b0908'; c.beginPath(); c.arc(x, y + h / 2, 2.6, 0, TAU); c.fill(); hg.fillStyle = '#fff'; hg.beginPath(); hg.arc(x, y + h / 2, 2.6, 0, TAU); hg.fill(); }
-    }
-    const rep = [1, len / 8], ptex = canvasTex(pc, rep); ptex.anisotropy = 8; const pn = new THREE.CanvasTexture(normalFromHeight(hC, 2.8)); pn.wrapS = pn.wrapT = THREE.RepeatWrapping; pn.repeat.set(rep[0], rep[1]);
-    const deck = new THREE.Mesh(new THREE.PlaneGeometry(2 * bx + 0.5, len), new THREE.MeshStandardMaterial({ map: ptex, normalMap: pn, roughness: 0.32, metalness: 0.05, envMapIntensity: 1.5 }));   // bois détrempé : il brille
+    const rep = [1, len / 8], deck = new THREE.Mesh(new THREE.PlaneGeometry(2 * bx + 0.5, len), Tex.mat(Tex.planks(512, 1024, 26), 2.0, rep, { metalness: 0.05, envMapIntensity: 1.5 }));   // bois détrempé : il brille
     deck.rotation.x = -PI / 2; deck.receiveShadow = true; g.add(deck);
     const deco = [], glow = [], red = 0x5a1611, dk = 0x1c1410;
     for (const sx of [-1, 1]) {

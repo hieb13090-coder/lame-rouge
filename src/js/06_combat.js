@@ -158,7 +158,7 @@ const Combat = {
   kickGeo(F, A, u, o) {
     const V = KV[A.kv] || KV.k540, sc = F.scale, s0 = clamp(u, 0, 1), s1 = clamp(u - 1, 0, 1), s2 = clamp(u - 2, 0, 1), ls = A.kleg === 'R' ? -1 : 1, d = A.kd;
     const LEG = (D.thigh + D.shin) * 1.02, L = this._kl;
-    let th = 0, J = 0, cr = 0, ln = 0, sd = 0, arms = 0, al = ls * 0.9, ex = 0, fy = 1.2;
+    let th = 0, J = 0, cr = 0, ln = 0, sd = 0, arms = 0, al = ls * 0.9, ex = 0, fy = 1.2, fw = 0;
     if (A.kv === 'k540') {                                                     // retourné sauté : dos tourné, saut, un tour et demi, réception sur la jambe qui frappe
       const T0 = 0.9 * PI, T1 = TAU + 2.4;
       th = u < 1 ? T0 * smooth(s0) : u < 2 ? T0 + (T1 - T0) * s1 : T1 - 2.4 * smooth(Math.min(1, s2 / 0.75));
@@ -168,17 +168,29 @@ const Combat = {
       ln = u < 1 ? 0.12 * s0 : u < 2 ? -0.4 * Math.sin(PI * s1) : 0.35 * Math.pow(1 - s2, 1.3);
       sd = u >= 1 && u < 2 ? -ls * 0.45 * Math.sin(PI * s1) : 0; arms = u < 1 ? smooth(s0) * 0.6 : u < 2 ? 1 : 1 - smooth(s2); fy = 0.1;
     } else {                                                                   // coups de pied au sol : de face, circulaire, balayage bas
-      const front = A.kv === 'front', low = A.kv === 'low', piv = front ? 0 : low ? 0.35 : 0.55;
+      const front = A.kv === 'front', low = A.kv === 'low', piv = front ? 0 : low ? 0.4 : 0.7;
       th = u < 1 ? piv * 0.3 * smooth(s0) : u < 2 ? piv * (0.3 + 0.7 * smooth(s1)) : piv * (1 - smooth(s2));
       ex = u < 1 ? 0 : u < 2 ? (s1 < (front ? 0.5 : 0.3) ? smooth(s1 / (front ? 0.5 : 0.3)) : s1 < 0.88 ? 1 : lerp(1, 0.4, smooth((s1 - 0.88) / 0.12))) : 0.4 * (1 - smooth(s2));
       al = front ? ls * 0.12 : ls * lerp(1.75, -0.45, u < 1 ? 0 : u < 2 ? s1 : 1);
       fy = front ? 0.98 : low ? 0.3 : 1.28;
       cr = low ? 0.24 * (u < 1 ? smooth(s0) : u < 2 ? 1 : 1 - smooth(s2)) : 0.04;
-      ln = front ? -0.12 * (u < 1 ? s0 : u < 2 ? 1 : 1 - s2) : low ? 0.25 * (u < 2 ? 1 : 1 - s2) : -0.2 * (u < 1 ? s0 : u < 2 ? 1 : 1 - s2);
-      sd = front ? 0 : -ls * (low ? 0.1 : 0.3) * (u < 1 ? s0 : u < 2 ? 1 : 1 - s2); arms = 0;
+      ln = front ? (u < 1 ? 0.06 * s0 : u < 2 ? lerp(0.06, -0.22, smooth(Math.min(1, s1 * 2))) : -0.22 * (1 - smooth(s2))) : low ? 0.25 * (u < 2 ? 1 : 1 - s2) : -0.34 * (u < 1 ? s0 : u < 2 ? 1 : 1 - smooth(s2));
+      sd = front ? 0 : -ls * (low ? 0.1 : 0.4) * (u < 1 ? s0 : u < 2 ? 1 : 1 - s2); arms = u < 1 ? smooth(s0) : u < 2 ? 1 : 1 - smooth(s2);
+      fw = front ? (u < 1 ? -0.04 * s0 : u < 2 ? lerp(-0.04, 0.07, smooth(s1)) : 0.07 * (1 - smooth(s2))) : 0;
     }
     const Y = o.yaw = A.kyaw + d * th, cy = Math.cos(Y), sy = Math.sin(Y);
-    o.jump = J; o.crouch = cr; o.lean = ln; o.side = sd; o.arms = arms;
+    o.jump = J; o.crouch = cr; o.lean = ln; o.side = sd; o.arms = arms; o.fwd = fw;
+    // bras pendant le coup (repère du buste, +X à gauche) : ouverts pour tourner au retourné, en balancier sur les coups au sol ;
+    // style « Jambes » : les mains restent dans le dos, seules les jambes travaillent
+    const aR = o.aR || (o.aR = new V3()), aL = o.aL || (o.aL = new V3()), sx = -ls, cool = F.W && F.W.legs;
+    if (A.kv === 'k540') { aR.set(-0.42, 0.44, 0.04); aL.set(0.42, 0.47, 0.02); }
+    else if (cool) { aR.set(-0.08, -0.03, -0.16); aL.set(0.08, -0.03, -0.16); }
+    else {
+      const same = sx < 0 ? aR : aL, opp = sx < 0 ? aL : aR;                       // bras du côté de la jambe qui frappe / bras opposé
+      if (A.kv === 'front') { same.set(sx * 0.24, 0.04, -0.08); opp.set(-sx * 0.14, 0.34, 0.26); }
+      else if (A.kv === 'low') { same.set(sx * 0.32, -0.08, 0.26); opp.set(-sx * 0.26, -0.12, 0.32); }
+      else { same.set(sx * 0.44, 0.2, -0.16); opp.set(-sx * 0.12, 0.36, 0.28); }
+    }
     const toW = (v, x, y, z) => v.set(F.pos.x + (x * cy + z * sy) * sc, y * sc, F.pos.z + (-x * sy + z * cy) * sc);
     const hy = D.hipH + D.hipY + J - cr * 0.8;
     toW(o.hipK, ls * D.hipX, hy, 0);
@@ -286,10 +298,17 @@ const Combat = {
           const d = A.victim && !A.victim.rag ? Math.hypot(A.victim.pos.x - F.pos.x, A.victim.pos.z - F.pos.z) : 1.6, k = clamp((d - 1.15) * 4.5, 0, 6) + 1.5;
           F.push.x += Math.sin(A.kyaw) * k; F.push.z += Math.cos(A.kyaw) * k;
         }
-        F.trail = Trails.get(0xffffff, A.kv === 'k540' ? 0.35 : 0.2); Sfx.whoosh(F.pos, A.kv === 'k540'); if (A.kv === 'k540') Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 5, 0.25);
+        F.trail = F.W.legs ? Trails.get(0xff7a2a, A.kv === 'k540' ? 0.8 : 0.5) : Trails.get(0xffffff, A.kv === 'k540' ? 0.35 : 0.2); Sfx.whoosh(F.pos, A.kv === 'k540'); if (A.kv === 'k540') Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 5, 0.25);
       }
     } else if (A.phase === 1) {
       A.s = Math.min(1, A.pt / A.act);
+      if (A.K && A.s > 0.15 && A.s < 0.95) {
+        if (F.W.legs) {                                                          // jambe ardente : du pied jusqu'au genou
+          const big = A.kv === 'k540'; Fx.flame(A.K.footK, big ? 4 : 3, big ? 0.26 : 0.2);
+          Fx.flame(this._k.copy(A.K.footK).lerp(A.K.hipK, 0.3), big ? 2 : 1, big ? 0.2 : 0.15);
+        }
+        if (A.kv === 'low' && Math.random() < 0.6) Fx.dust(this._k.set(A.K.footK.x, 0.05, A.K.footK.z), 1, 0.2);
+      }
       if (A.pt >= A.act) { A.s = 1; A.phase = 2; A.pt = 0; }
     } else {
       if (!A.kland) { A.kland = true; if (A.kv === 'k540') { Sfx.thud(F.pos, 0.45); Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 7, 0.3); if (F.isPlayer) Gfx.shake = Math.max(Gfx.shake, 0.05); } }
@@ -298,7 +317,7 @@ const Combat = {
     }
     const K = A.K = this.kickGeo(F, A, this.kickU(A), A.K || { footK: new V3(), footS: new V3(), hipK: new V3() });
     F.yaw = F.yawT = K.yaw;
-    const P = A.pose; P.twist = 0; P.hip = 0; P.fwd = 0; P.lean = K.lean; P.crouch = K.crouch; P.side = K.side;
+    const P = A.pose; P.twist = 0; P.hip = 0; P.fwd = K.fwd; P.lean = K.lean; P.crouch = K.crouch; P.side = K.side;
   },
 
   // balayage sous-échantillonné de la lame entre deux images : aucun membre ne passe entre deux positions

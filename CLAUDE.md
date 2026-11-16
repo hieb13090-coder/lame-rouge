@@ -41,6 +41,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 | `00_core.js` | `CFG`, `WEAPONS`, `WEAPON_ORDER`, `ELEMENTS`, `ARENAS`, `ARMORS`, `TYPES`, `Save`, `Input`, `KeyName` | Maths, données, sauvegarde (localStorage), clavier, souris, tactile |
 | `01_audio.js` | `Sfx` | Sons synthétisés en Web Audio, aucun fichier |
 | `02_gfx.js` | `Gfx`, `PALETTES`, `Env`, `Fx`, `Trails`, `Blood`, `Drops`, `Clip` | Moteur de rendu, lumières par arène, construction des arènes, particules, sang, traînées |
+| `02b_textures.js` | `Tex` | Textures procédurales des arènes (dalles, sable, muraille, planches, terre brûlée) : couleur, relief et rugosité en une passe |
 | `03_physics.js` | `Phys` | Verlet : ragdolls, membres tranchés, armes au sol |
 | `04_models.js` | `D`, `SEGS`, `Models` | Modèles procéduraux des combattants et des armes, plaies et os |
 | `05_fighter.js` | `Fighter`, `POSE` | Squelette, marche avec pieds posés (IK des jambes), bras, dash, animation |
@@ -74,7 +75,8 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 
 - Arènes : `Env` dans `02_gfx.js`, une par clé de `ARENAS` (`dojo`, `bridge`, `fortress`).
 - Lumières, brouillard, exposition et bloom par arène : `PALETTES`.
-- Textures : générées sur canvas (`mkCanvas`, `canvasTex`, `normalFromHeight`). Il n'y a aucun fichier image.
+- Textures : générées sur canvas. Celles des arènes sont dans `02b_textures.js` (`Tex.dojoFloor`, `burntFloor`, `wall`, `planks`) : chaque pixel donne couleur, hauteur et rugosité, et `Tex.mat` en fait un matériau (carte de normales + carte de rugosité). Il n'y a aucun fichier image.
+- Personnages : `blender/personnages.py` construit tous les types (apparence dans `blender/looks.json`) et régénère `src/js/04c_perso.js`.
 
 ### Performances
 
@@ -96,7 +98,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
   - `Fighter.launch` fait voler le combattant sur le dos (`action.fly`). Un mur l'arrête.
   - En vol, il renverse ceux qu'il percute (effet quilles). La liste `fly.hit` est partagée par toute la chaîne pour que chacun ne soit renversé qu'une fois.
 - **Rythme :** `GAME_SPEED` (00_core.js, 0,85) ralentit tout le jeu ; `DASH_CD` impose 4 s entre deux dashs du joueur. L IA punit les coups ratés, vise les membres déjà blessés, brise les gardes tenues, recule devant le retourné et prend le joueur à revers quand un autre attaque.
-- **Style « Jambes » :** arme `legs` de type `fist`. Le clic gauche enchaîne coup de face, circulaire et balayage. Le coup lourd déclenche le retourné.
+- **Style « Jambes » :** arme `legs` de type `fist`. Le clic gauche enchaîne coup de face, circulaire et balayage. Le coup lourd déclenche le retourné. Mains dans le dos, petits rebonds, jambe en feu pendant les coups (effet visuel seulement). Les bras pendant un coup de pied viennent de `kickGeo` (`aR`, `aL`, `arms`).
 
 ### Duel en ligne (08e_net.js)
 

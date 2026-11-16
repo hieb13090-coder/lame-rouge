@@ -242,6 +242,7 @@ class Fighter {
     else if (A.type === 'cast') { T.lean = A.el === 'ice' ? 0.2 : 0.03; T.twist = A.el === 'ice' ? 0 : (A.off === 'L' ? -0.28 : 0.28); T.crouch = 0.03; }
     else if (dash) { const x = A.t / A.dur, k = sp > 0.1 ? 1 / sp : 0; T.crouch = 0.1 + 0.15 * Math.sin(PI * Math.min(1, x * 1.15)); T.lean = 0.2 * vf * k; T.side = 0.24 * vr * k; T.fwd = 0.05 * vf * k; }      // le corps plonge dans le sens du dash
     else if (A.type === 'attack' && A.pose) { T.twist = A.pose.twist; T.lean = A.pose.lean; T.crouch = A.pose.crouch; T.hip = A.pose.hip || 0; T.fwd = A.pose.fwd || 0; T.side = A.pose.side || 0; }
+    else if (this.W.legs && A.type === 'idle') { T.lean = -0.05; T.twist = 0.22; if (sp < 0.35) { const b = Math.sin(this.t * 8.2 + this.id); T.crouch = 0.035 + 0.025 * b * b; } }      // Jambes : buste droit, de trois quarts, petits rebonds
     else if (this.W.kind !== 'fist' && sp < 0.35) T.crouch = 0.02;              // en garde : genoux fléchis
     if (this.landT > 0) { this.landT -= dt; T.crouch += 0.1 * clamp(this.landT / 0.16, 0, 1); }      // réception après un dash
     const tired = this.isPlayer ? clamp(1 - this.stam / 45, 0, 1) : 0;
@@ -470,7 +471,7 @@ class Fighter {
     }
     // vraies animations (Mixamo, 04b_mocap.js) : à l'arrêt, en marche et en course, les mains suivent le mouvement capturé
     //   arme à deux mains : garde, marche et course au sabre ; mains nues : balancier des bras en marche et en course
-    if (typeof MOCAP !== 'undefined' && A.type === 'idle' && !carry) {
+    if (typeof MOCAP !== 'undefined' && A.type === 'idle' && !carry && !W.legs) {
       const twoS = !fist && W.hands === 2 && W.kind !== 'spear', amp = G.amp || 0, run = G.run || 0;
       if (twoS || (fist && amp > 0.02)) {
         const M = this._mo || (this._mo = { a: new Float32Array(6), b: new Float32Array(6), c: new Float32Array(6), r: new Float32Array(6) });
@@ -494,8 +495,11 @@ class Fighter {
       if (!fist) { tg[main].set(-0.27 * mx, 0.02, 0.04); dir.set(-0.25 * mx, -0.45, -0.86); }
     }
     if (A.type === 'down') { tg.R.set(-0.44, 0.2, 0.1); tg.L.set(0.44, 0.22, 0.08); if (!fist) dir.set(-0.85 * mx, -0.3, 0.2); }      // bras en croix
-    if (A.type === 'attack' && A.kind === 'kick' && A.K) {                     // coup de pied retourné : les bras s'ouvrent et montent pour tourner
-      const k = A.K.arms; tg.R.lerp(_f1.set(-0.42, 0.44, 0.04), k); tg.L.lerp(_f1.set(0.42, 0.47, 0.02), k); if (!fist) dir.lerp(_f1.set(-0.3 * mx, -0.35, -0.88), k);
+    if (W.legs && !block && !sprint && (A.type === 'idle' || A.type === 'dodge')) {         // style « Jambes » : mains croisées dans le dos, on se balance sur la pointe des pieds
+      const sw = 0.01 * Math.sin(this.t * 2.1 + this.id); tg.R.set(-0.08, -0.03 + sw, -0.16); tg.L.set(0.08, -0.03 - sw, -0.16);
+    }
+    if (A.type === 'attack' && A.kind === 'kick' && A.K) {                     // coup de pied : bras ouverts pour tourner, en balancier, ou dans le dos (Jambes)
+      const k = A.K.arms; tg.R.lerp(A.K.aR, k); tg.L.lerp(A.K.aL, k); if (!fist && A.kv === 'k540') dir.lerp(_f1.set(-0.3 * mx, -0.35, -0.88), k);
     }
     if (A.type === 'stagger' || A.type === 'stun') { const j = A.type === 'stun' ? 0.05 : 0; tg.R.x -= 0.1; tg.R.y += 0.08 + rndS(j); tg.L.x += 0.1; tg.L.y += 0.06 + rndS(j); dir.x += 0.5 * mx; dir.z -= 0.2; }
     dir.normalize();
