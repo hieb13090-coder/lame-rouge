@@ -528,7 +528,7 @@ const Game = {
 
   // ---------------------------------------------------------- boucle
   sim(dtReal, noInput) {
-    let ts = this.slowmo ? 0.25 : 1;
+    let ts = (this.slowmo ? 0.25 : 1) * GAME_SPEED;                            // tout le jeu tourne un peu moins vite que le temps réel
     if (this.stopT > 0) { this.stopT -= dtReal; ts *= 0.06; }
     if (this.killSlow > 0) { this.killSlow -= dtReal; ts *= 0.3; }
     const dt = dtReal * ts; this.t += dt;

@@ -67,6 +67,8 @@ const WEAPONS = {
   claymore:  { id: 'claymore', wt: 5, name: 'Claymore', short: 'Claymore', kind: 'blade', len: 1.26, b0: 0.14, hands: 2, grip2: -0.24, below: 0.30, dmg: 36, wind: 0.33, act: 0.19, rec: 0.50, stam: 21, knock: 2.8, mass: 2.8, hit: 'slash', hitR: 0.04, cleave: 3, combo: ['slash', 'slash', 'slash'] },
   staff:     { id: 'staff', wt: 1, name: 'Bâton', short: 'Bâton', kind: 'staff', blunt: true, len: 1.35, b0: 0.3, hands: 2, grip2: 0.5, below: 0.45, dmg: 18.4, wind: 0.158, act: 0.105, rec: 0.27, stam: 7, knock: 1.6, mass: 1.2, hit: 'blunt', hitR: 0.04, cleave: 2, combo: ['slash', 'thrust', 'slash'] },
 };
+const GAME_SPEED = 0.85;                                                       // vitesse générale du jeu (1 = vitesse d'origine)
+const DASH_CD = 4;                                                             // secondes entre deux dashs du joueur
 const WEAPON_ORDER = ['fists', 'katana', 'longsword', 'spear', 'hatchet', 'daneaxe', 'claymore', 'staff', 'legs'];
 
 const ELEMENTS = {

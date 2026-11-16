@@ -40,6 +40,8 @@ const AI = {
     E.yawT = toP;
     let vx = 0, vz = 0;
     const atkD = E.W.kind === 'fist' ? 0.95 * E.scale : E.reach * 0.78 + 0.15;
+    const PA = P.action, open = (PA.type === 'attack' && PA.phase === 2) || PA.type === 'stagger' || PA.type === 'cast' || (PA.type === 'dodge' && PA.t > 0.25);
+    if (open && E.canAct && d <= atkD + 0.35 && a.cd < 1.2 && Math.random() < dt * 4) { a.n = 0; this.strike(E, P, 0); return; }      // le joueur se découvre : on punit tout de suite
     if (a.state === 'engage') {
       if (!E.canAct) { this.release(E); a.state = 'circle'; }
       else if (d <= atkD) { a.n = 0; this.strike(E, P, 0); return; }
@@ -48,7 +50,8 @@ const AI = {
       const R = E.reach + 1.0 + (E.canAct ? 0 : 2) + (E.blood < 60 ? 1.2 : 0) + ((E.id % 3) * 0.45);
       if (d > R + 2.5) { vx = (dx / d) * sp; vz = (dz / d) * sp; }
       else if (a.pause > 0) { a.pause -= dt; const rad = clamp((d - R) * 1.6, -1, 1); if (Math.abs(rad) > 0.6) { vx = (dx / d) * rad * sp * 0.5; vz = (dz / d) * rad * sp * 0.5; } }      // il s'arrête, jauge, en garde
-      else { const rad = clamp((d - R) * 1.6, -1, 1), k = sp * 0.8 * a.pace; vx = ((dx / d) * rad + (-dz / d) * a.dir * 0.55) * k; vz = ((dz / d) * rad + (dx / d) * a.dir * 0.55) * k; if (Math.random() < dt * 0.3) a.pause = rnd(0.35, 1.0); }
+      else { if (this.tokens > 0 && !a.token) { const back = angDiff(P.yaw + PI, Math.atan2(-dx, -dz)); a.dir = back > 0 ? 1 : -1; }      // un autre attaque : celui-ci tourne pour prendre le joueur de dos
+        const rad = clamp((d - R) * 1.6, -1, 1), k = sp * 0.8 * a.pace; vx = ((dx / d) * rad + (-dz / d) * a.dir * 0.55) * k; vz = ((dz / d) * rad + (dx / d) * a.dir * 0.55) * k; if (Math.random() < dt * 0.3) a.pause = rnd(0.35, 1.0); }
       if (Math.random() < dt * 0.25) { a.dir = -a.dir; a.pause = Math.max(a.pause, rnd(0.15, 0.35)); }      // changement de sens : un temps d'arrêt, pas un demi-tour sec
       if (a.cd <= 0 && E.canAct && d < R + 4 && this.tokens < this.maxTokens) { a.token = true; this.tokens++; a.state = 'engage'; a.t = 0; }
     }
@@ -60,9 +63,12 @@ const AI = {
     E.ctrl.set(vx, 0, vz);
   },
   strike(E, P, n) {
-    const r = Math.random(), zn = r < 0.4 ? 'torso' : r < 0.52 ? 'head' : r < 0.66 ? 'armL' : r < 0.8 ? 'armR' : r < 0.9 ? 'legL' : 'legR';
+    const r = Math.random(); let zn = r < 0.4 ? 'torso' : r < 0.52 ? 'head' : r < 0.66 ? 'armL' : r < 0.8 ? 'armR' : r < 0.9 ? 'legL' : 'legR';
+    const hurt = ['armL', 'armR', 'legL', 'legR', 'torso', 'head'].filter((k) => P.zones[k].stage > 0 && P.zones[k].state === 'ok');
+    if (hurt.length && Math.random() < 0.45) zn = hurt[Math.floor(Math.random() * hurt.length)];      // il s'acharne sur un membre déjà blessé
     const z = P.zones[zn].state === 'severed' ? 'torso' : zn, pt = P.zonePoint(z, new V3());
-    if (Combat.start(E, { victim: P, zone: z, point: pt }, { combo: n, windK: (E.T.wind || 2) * (n > 0 ? 0.75 : 1), heavy: Math.random() < (E.boss ? 0.3 : 0.12) })) { E.ai.attacking = true; } else { this.release(E); E.ai.cd = 0.8; E.ai.state = 'circle'; }
+    const heavy = Math.random() < (P.blocking ? 0.65 : E.boss ? 0.3 : 0.12);                           // garde levée : coup lourd pour la briser
+    if (Combat.start(E, { victim: P, zone: z, point: pt }, { combo: n, windK: (E.T.wind || 2) * (n > 0 ? 0.75 : 1), heavy })) { E.ai.attacking = true; } else { this.release(E); E.ai.cd = 0.8; E.ai.state = 'circle'; }
   },
   // le joueur arme un coup : les ennemis à portée peuvent lever leur garde, parer ou reculer
   onThreat(P) {
@@ -71,6 +77,7 @@ const AI = {
       const dx = E.pos.x - P.pos.x, dz = E.pos.z - P.pos.z, d = Math.hypot(dx, dz);
       if (d > P.reach + 1.3 || Math.abs(angDiff(P.yawT, Math.atan2(dx, dz))) > 1.2) continue;
       const T = E.T;
+      if (P.action.type === 'attack' && P.action.kind === 'kick' && P.action.kv === 'k540' && E.moveMul > 0.9 && Math.random() < 0.35 + (T.evade || 0)) { E.push.x += (dx / (d || 1)) * 7; E.push.z += (dz / (d || 1)) * 7; continue; }      // il voit venir le retourné et recule
       if (E.W.kind !== 'fist' && E.canAct && Math.random() < (T.block || 0) * (E.blood < 60 ? 0.6 : 1)) E.block(rnd(0.5, 0.9), Math.random() < (T.parry || 0) / Math.max(0.05, T.block || 1));
       else if (Math.random() < (T.evade || 0) && E.moveMul > 0.9) { E.push.x += (dx / (d || 1)) * 5.5; E.push.z += (dz / (d || 1)) * 5.5; }
     }
@@ -152,10 +159,11 @@ const Player = {
       if (this.tapC === c && now - this.tapT < 260) { dash = true; dashX = fx * ay + rx * ax; dashZ = fz * ay + rz * ax; this.tapC = ''; } else { this.tapC = c; this.tapT = now; }
     }
     if (Input.hit('Space')) { dash = true; if (m > 0.15) { dashX = P.ctrl.x; dashZ = P.ctrl.z; } else { dashX = -Math.sin(P.yaw); dashZ = -Math.cos(P.yaw); } }
+    if (dash && Game.t - (this.dashLast ?? -99) < DASH_CD) { HUD.combo('Dash prêt dans ' + (DASH_CD - (Game.t - this.dashLast)).toFixed(1) + ' s'); dash = false; }      // un dash toutes les 4 s
     if (dash) {
       if (P.blocking) P.idle();
       if (P.dodge(dashX, dashZ)) {
-        this.dashT = Game.t; Game.stats.dash = (Game.stats.dash || 0) + 1;
+        this.dashT = this.dashLast = Game.t; Game.stats.dash = (Game.stats.dash || 0) + 1;
         for (const E of Game.fighters) {                                         // dash lancé à l'instant où un coup allait porter : esquive parfaite
           const B = E.action; if (E.team !== 'enemy' || E.rag || B.type !== 'attack' || B.victim !== P || !(B.phase === 1 || (B.phase === 0 && B.wind - B.pt < 0.22))) continue;
           if (Math.hypot(E.pos.x - P.pos.x, E.pos.z - P.pos.z) < E.reach + 1.2) { Game.onPerfectDodge(P, E); break; }
