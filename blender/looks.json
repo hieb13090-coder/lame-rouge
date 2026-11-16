@@ -1,0 +1,121 @@
+{
+ "player": {
+  "skin": 12159592,
+  "top": 1514280,
+  "bottom": 1052950,
+  "trim": 6165008,
+  "inner": 6165008,
+  "hair": 789001,
+  "hat": "headband",
+  "hairStyle": "ponytail",
+  "stubble": true,
+  "scar": true
+ },
+ "dummy": {
+  "skin": 11048300,
+  "top": 8812378,
+  "bottom": 6970693,
+  "trim": 4142116,
+  "hair": 11048300,
+  "hat": "none",
+  "plain": true
+ },
+ "vagabond": {
+  "skin": 11041884,
+  "top": 4866616,
+  "bottom": 2762273,
+  "trim": 3811868,
+  "hair": 1380364,
+  "hat": "none",
+  "hairStyle": "buzz",
+  "bare": true,
+  "stubble": true,
+  "scar": true
+ },
+ "bandit": {
+  "skin": 10450005,
+  "top": 3023387,
+  "bottom": 1841688,
+  "trim": 1315602,
+  "hair": 1051658,
+  "hat": "mask",
+  "hairStyle": "topknot"
+ },
+ "ronin": {
+  "skin": 11568486,
+  "top": 2369066,
+  "bottom": 1382170,
+  "trim": 4001806,
+  "inner": 9077362,
+  "hair": 920330,
+  "hat": "none",
+  "hairStyle": "long",
+  "stubble": true,
+  "scar": true
+ },
+ "ashigaru": {
+  "skin": 11042398,
+  "top": 5642773,
+  "bottom": 1841431,
+  "trim": 1184276,
+  "hair": 920330,
+  "hat": "jingasa",
+  "hairStyle": "topknot",
+  "armor": "do",
+  "stubble": true
+ },
+ "knight": {
+  "skin": 12161402,
+  "top": 7765123,
+  "bottom": 4869974,
+  "trim": 9074230,
+  "hair": 3351834,
+  "hat": "greathelm",
+  "armor": "plate",
+  "tabard": 11117460
+ },
+ "viking": {
+  "skin": 12622464,
+  "top": 4142122,
+  "bottom": 2763302,
+  "trim": 6048298,
+  "hair": 9068076,
+  "hat": "nasal",
+  "hairStyle": "braids",
+  "fur": true,
+  "beard": 9068076,
+  "scar": true
+ },
+ "highlander": {
+  "skin": 12621180,
+  "top": 2768176,
+  "bottom": 5184538,
+  "trim": 1452319,
+  "hair": 8009240,
+  "hat": "none",
+  "hairStyle": "wild",
+  "kilt": true,
+  "beard": 8009240,
+  "paint": 2771576
+ },
+ "oni": {
+  "skin": 8265498,
+  "top": 1315864,
+  "bottom": 921106,
+  "trim": 9071138,
+  "inner": 9071138,
+  "hair": 12170152,
+  "hat": "oni"
+ },
+ "rival": {
+  "skin": 11830629,
+  "top": 6035220,
+  "bottom": 1511951,
+  "trim": 14273712,
+  "inner": 14273712,
+  "hair": 789001,
+  "hat": "headband",
+  "hairStyle": "topknot",
+  "stubble": true
+ }
+}
