@@ -114,9 +114,6 @@ const Player = {
     this.yaw -= Input.mx * sens; this.pitch = clamp(this.pitch + Input.my * sens, -0.22, 1.1);
     const ar = (Input.down('ArrowLeft') ? 1 : 0) - (Input.down('ArrowRight') ? 1 : 0), au = (Input.down('ArrowDown') ? 1 : 0) - (Input.down('ArrowUp') ? 1 : 0);
     this.yaw += ar * 2.4 * dt; this.pitch = clamp(this.pitch + au * 1.4 * dt, -0.22, 1.1);
-    if (!Input.locked && !CFG.touch && Input.inside) {                          // sans capture de la souris : les bords de l'écran font tourner
-      if (Input.px < 0.1) this.yaw += 2.2 * dt * (1 - Input.px / 0.1); else if (Input.px > 0.9) this.yaw -= 2.2 * dt * ((Input.px - 0.9) / 0.1);
-    }
     // visée : molette ou R pour choisir le membre, T pour revenir au viseur libre
     if (Input.wheel) this.setLock(this.lock + (Input.wheel > 0 ? 1 : -1));
     if (Input.hit('KeyR') || Input.hit('ZoneNext')) this.setLock(this.lock + 1);
@@ -179,7 +176,7 @@ const Player = {
       const own = WEAPON_ORDER.filter((w) => Game.owns(w));
       for (let i = 0; i < WEAPON_ORDER.length; i++) if (Input.hit('Digit' + (i + 1)) && Game.owns(WEAPON_ORDER[i])) this.swap(P, WEAPON_ORDER[i]);
       if (Input.hit('WeaponNext')) this.swap(P, own[(own.indexOf(P.weaponId) + 1) % own.length]);
-      if (Input.hit('KeyE') && P.W.kind !== 'fist') { const k = ELEM_ORDER.indexOf(P.element); P.setElement(ELEM_ORDER[(k + 1) % ELEM_ORDER.length]); Game.elem = P.element; Sfx.ui(); HUD.weapons(); }
+      if (Input.hit('KeyE') && (P.W.kind !== 'fist' || P.W.legs)) { const k = ELEM_ORDER.indexOf(P.element); P.setElement(ELEM_ORDER[(k + 1) % ELEM_ORDER.length]); Game.elem = P.element; Sfx.ui(); HUD.weapons(); }
     }
     this.near = null; let nd = 1.7 * 1.7;
     for (const b of Game.drops) { if (b.dead || !b.ps.length || (Game.mode === 'dungeon' && Game.owns(b.weaponId))) continue; const cx = (b.ps[0].x + b.ps[1].x) / 2, cz = (b.ps[0].z + b.ps[1].z) / 2, d = (cx - P.pos.x) ** 2 + (cz - P.pos.z) ** 2; if (d < nd) { nd = d; this.near = b; } }

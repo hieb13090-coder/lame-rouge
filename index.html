@@ -1568,7 +1568,7 @@ const Input = {
   end() { this.p = {}; this.mx = 0; this.my = 0; this.lmbP = false; this.lmbR = false; this.rmbP = false; this.hvP = false; this.wheel = 0; },
   clear() { this.k = {}; this.lmb = false; this.rmb = false; this.stick.x = this.stick.y = 0; this.stick.id = -1; this.look.id = -1; const s = $('t-stick'); if (s) s.style.display = 'none'; this.end(); },
   lock() {
-    if (CFG.touch || this.lockFail || !this.canvas.requestPointerLock) return;
+    if (CFG.touch || !this.canvas.requestPointerLock) return;                 // un refus n'est pas définitif : on réessaie au clic suivant
     try { const r = this.canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { this.lockFail = true; }); } catch (e) { this.lockFail = true; }
   },
   unlock() { try { if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* rien */ } },
@@ -1582,7 +1582,8 @@ const Input = {
       if (e.code === 'Escape' && this.active && !this.locked && this.onPause) this.onPause();
     });
     window.addEventListener('keyup', (e) => { this.k[e.code] = false; });
-    window.addEventListener('blur', () => { this.k = {}; this.lmb = this.rmb = this.hv = false; });
+    window.addEventListener('blur', () => { this.k = {}; this.lmb = this.rmb = this.hv = false; this.mx = this.my = 0; this.inside = false; });
+    document.addEventListener('mouseleave', () => { this.inside = false; });
     document.addEventListener('pointerlockchange', () => {
       const was = this.locked;
       this.locked = document.pointerLockElement === canvas;
@@ -3333,7 +3334,7 @@ class Fighter {
     if (this.zones) this.caps();
   }
   setElement(e) {
-    if (this.W.kind === 'fist') e = 'steel';
+    if (this.W.kind === 'fist' && !this.W.legs) e = 'steel';                   // poings nus : pas d'élément ; le style Jambes, lui, en porte un
     this.element = e; const m = this.weapon.mat;
     if (m) { if (e === 'steel') m.emissive.setRGB(0, 0, 0); else m.emissive.copy(col(ELEMENTS[e].color)).multiplyScalar(1.1); }
   }
@@ -4528,14 +4529,16 @@ const Combat = {
           const d = A.victim && !A.victim.rag ? Math.hypot(A.victim.pos.x - F.pos.x, A.victim.pos.z - F.pos.z) : 1.6, k = clamp((d - 1.15) * 4.5, 0, 6) + 1.5;
           F.push.x += Math.sin(A.kyaw) * k; F.push.z += Math.cos(A.kyaw) * k;
         }
-        F.trail = F.W.legs ? Trails.get(0xff7a2a, A.kv === 'k540' ? 0.8 : 0.5) : Trails.get(0xffffff, A.kv === 'k540' ? 0.35 : 0.2); Sfx.whoosh(F.pos, A.kv === 'k540'); if (A.kv === 'k540') Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 5, 0.25);
+        F.trail = F.W.legs && F.element !== 'steel' ? Trails.get(ELEMENTS[F.element].color, A.kv === 'k540' ? 0.8 : 0.5) : Trails.get(0xffffff, A.kv === 'k540' ? 0.35 : 0.2); Sfx.whoosh(F.pos, A.kv === 'k540'); if (A.kv === 'k540') Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 5, 0.25);
       }
     } else if (A.phase === 1) {
       A.s = Math.min(1, A.pt / A.act);
       if (A.K && A.s > 0.15 && A.s < 0.95) {
-        if (F.W.legs) {                                                          // jambe ardente : du pied jusqu'au genou
-          const big = A.kv === 'k540'; Fx.flame(A.K.footK, big ? 4 : 3, big ? 0.26 : 0.2);
-          Fx.flame(this._k.copy(A.K.footK).lerp(A.K.hipK, 0.3), big ? 2 : 1, big ? 0.2 : 0.15);
+        if (F.W.legs && F.element !== 'steel') {                                 // style Jambes : l'élément enveloppe la jambe, du pied jusqu'au genou
+          const big = A.kv === 'k540', knee = this._k.copy(A.K.footK).lerp(A.K.hipK, 0.3);
+          if (F.element === 'fire') { Fx.flame(A.K.footK, big ? 4 : 3, big ? 0.26 : 0.2); Fx.flame(knee, big ? 2 : 1, big ? 0.2 : 0.15); }
+          else if (F.element === 'ice') { Fx.frost(A.K.footK, big ? 4 : 3); Fx.frost(knee, 1); }
+          else { Fx.volt(A.K.footK, big ? 3 : 2); if (Math.random() < 0.5) Fx.arc(knee, A.K.footK, 0.04); }
         }
         if (A.kv === 'low' && Math.random() < 0.6) Fx.dust(this._k.set(A.K.footK.x, 0.05, A.K.footK.z), 1, 0.2);
       }
@@ -4644,7 +4647,7 @@ const Combat = {
       else if (!armored) V.stagger(V.isPlayer ? 0.2 : A.kind === 'kick' ? 0.55 : A.breaker || A.full ? 1.0 : heavy ? 0.62 : 0.36);
     }
     if (res === 'fatal' && !V.dead) V.kill(type === 'pierce' ? 'transpercé' : 'assommé', this._d.copy(dir).multiplyScalar(A.kind === 'kick' ? (A.kv === 'k540' ? 11 : 5) : 2));
-    if (F.element !== 'steel' && A.kind !== 'kick' && res !== 'none' && res !== 'armor') {
+    if (F.element !== 'steel' && (A.kind !== 'kick' || F.W.legs) && res !== 'none' && res !== 'armor') {      // les jambes portent l'élément, pas un simple coup de pied avec une lame
       if (V.zones[zn].state !== 'severed') V.applyElem(zn, F.element);
       else { if (F.element === 'fire') { Fx.flame(p, 8, 0.3); Sfx.fire(p); } else if (F.element === 'ice') { Fx.shards(p, 10); Sfx.ice(p); } else { Fx.volt(p, 10); Sfx.zap(p); } }
       if (F.element === 'bolt' && zn === 'torso') {                             // la foudre saute au voisin
@@ -4716,7 +4719,7 @@ const Combat = {
       if (!V.dead && !V.immortal) V.hp -= W.dmg * (A.heavy ? 1.6 : 1) * F.dmgMul;
       res = V.wound(zn, sg, p, type, dir);
       if (res === 'fatal' && !V.dead) V.kill(type === 'pierce' ? 'transpercé' : 'assommé');
-      if (F.element === 'fire' && A.kind !== 'kick') { Fx.flame(p, 8, 0.3); if (V.zones[zn].state !== 'severed') { V.zones[zn].burn = 4; } }
+      if (F.element === 'fire' && (A.kind !== 'kick' || F.W.legs)) { Fx.flame(p, 8, 0.3); if (V.zones[zn].state !== 'severed') { V.zones[zn].burn = 4; } }
       Game.onHit(F, V, zn, res, type, true);
     }
     this.feedback(F, V, zn, res, p, dir, type, true);
@@ -4864,9 +4867,6 @@ const Player = {
     this.yaw -= Input.mx * sens; this.pitch = clamp(this.pitch + Input.my * sens, -0.22, 1.1);
     const ar = (Input.down('ArrowLeft') ? 1 : 0) - (Input.down('ArrowRight') ? 1 : 0), au = (Input.down('ArrowDown') ? 1 : 0) - (Input.down('ArrowUp') ? 1 : 0);
     this.yaw += ar * 2.4 * dt; this.pitch = clamp(this.pitch + au * 1.4 * dt, -0.22, 1.1);
-    if (!Input.locked && !CFG.touch && Input.inside) {                          // sans capture de la souris : les bords de l'écran font tourner
-      if (Input.px < 0.1) this.yaw += 2.2 * dt * (1 - Input.px / 0.1); else if (Input.px > 0.9) this.yaw -= 2.2 * dt * ((Input.px - 0.9) / 0.1);
-    }
     // visée : molette ou R pour choisir le membre, T pour revenir au viseur libre
     if (Input.wheel) this.setLock(this.lock + (Input.wheel > 0 ? 1 : -1));
     if (Input.hit('KeyR') || Input.hit('ZoneNext')) this.setLock(this.lock + 1);
@@ -4929,7 +4929,7 @@ const Player = {
       const own = WEAPON_ORDER.filter((w) => Game.owns(w));
       for (let i = 0; i < WEAPON_ORDER.length; i++) if (Input.hit('Digit' + (i + 1)) && Game.owns(WEAPON_ORDER[i])) this.swap(P, WEAPON_ORDER[i]);
       if (Input.hit('WeaponNext')) this.swap(P, own[(own.indexOf(P.weaponId) + 1) % own.length]);
-      if (Input.hit('KeyE') && P.W.kind !== 'fist') { const k = ELEM_ORDER.indexOf(P.element); P.setElement(ELEM_ORDER[(k + 1) % ELEM_ORDER.length]); Game.elem = P.element; Sfx.ui(); HUD.weapons(); }
+      if (Input.hit('KeyE') && (P.W.kind !== 'fist' || P.W.legs)) { const k = ELEM_ORDER.indexOf(P.element); P.setElement(ELEM_ORDER[(k + 1) % ELEM_ORDER.length]); Game.elem = P.element; Sfx.ui(); HUD.weapons(); }
     }
     this.near = null; let nd = 1.7 * 1.7;
     for (const b of Game.drops) { if (b.dead || !b.ps.length || (Game.mode === 'dungeon' && Game.owns(b.weaponId))) continue; const cx = (b.ps[0].x + b.ps[1].x) / 2, cz = (b.ps[0].z + b.ps[1].z) / 2, d = (cx - P.pos.x) ** 2 + (cz - P.pos.z) ** 2; if (d < nd) { nd = d; this.near = b; } }
@@ -5595,7 +5595,7 @@ Object.assign(Combat, {
 // ---------------------------------------------------------------- pouvoirs : acier = eau, foudre = éclairs, feu = boule de feu, glace = souffle
 const Powers = {
   balls: [], ballGeo: null, ballMat: null,
-  element(P) { return P.W.kind === 'fist' ? 'steel' : P.element; },
+  element(P) { return P.W.kind === 'fist' && !P.W.legs ? 'steel' : P.element; },
   cast(P) {
     const el = this.element(P);
     if (el === 'steel') return Water.cast(P);
@@ -6506,7 +6506,7 @@ const HUD = {
     const P = Game.player, cur = P ? P.weaponId : 'katana', el = P ? P.element : 'steel';
     let h = '';
     WEAPON_ORDER.forEach((w, i) => { const own = Game.owns(w); h += '<div class="wslot' + (w === cur ? ' on' : '') + (own ? '' : ' lock') + '"><kbd>' + (i + 1) + '</kbd><span>' + (own ? WEAPONS[w].short : '?') + '</span></div>'; });
-    h += '<div id="h-elem" class="' + el + '"><kbd>' + (CFG.touch ? 'Lame' : KeyName.KeyE) + '</kbd><b>' + (WEAPONS[cur] && WEAPONS[cur].kind === 'fist' ? '—' : ELEMENTS[el].name) + '</b></div>';
+    h += '<div id="h-elem" class="' + el + '"><kbd>' + (CFG.touch ? 'Lame' : KeyName.KeyE) + '</kbd><b>' + (WEAPONS[cur] && WEAPONS[cur].kind === 'fist' && !WEAPONS[cur].legs ? '—' : ELEMENTS[el].name) + '</b></div>';
     h += '<div id="h-zone"><kbd>' + (CFG.touch ? 'Cible' : 'Molette') + '</kbd><b id="h-zone-t"></b></div>';
     h += '<div id="h-water"><kbd>' + (CFG.touch ? 'Pouvoir' : 'Clic molette') + '</kbd><b>Eau prête</b></div>';
     h += '<div id="h-kunai"><kbd>' + (CFG.touch ? 'Lancer' : KeyName.KeyX) + '</kbd><b>Kunai</b></div>';
@@ -6946,8 +6946,12 @@ const Game = {
     // lueur de la lame élémentaire du joueur
     const L = Gfx.weaponLight;
     if (P && !P.rag && P.element !== 'steel' && P.weapon && P.W.kind !== 'fist') { L.color.set(ELEMENTS[P.element].color); L.intensity = 1.1 + 0.25 * Math.sin(this.t * 17); L.position.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, P.W.len * 0.6 * P.scale); if (P.element === 'fire' && Math.random() < dt * 22) Fx.flame(_w6.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, rnd(P.W.b0, P.W.len) * P.scale), 1, 0.12); else if (P.element === 'ice' && Math.random() < dt * 9) Fx.frost(_w6.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, rnd(P.W.b0, P.W.len) * P.scale), 1); else if (P.element === 'bolt' && Math.random() < dt * 14) Fx.arc(_w5.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, P.W.b0 * P.scale), _w6.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, P.W.len * P.scale), 0.05); }
-    else if (P && !P.rag && P.W.legs && P.action.type === 'attack' && P.action.kind === 'kick' && P.action.K && P.action.phase === 1) { L.color.set(0xff7a2a); L.intensity = 1.6 + 0.4 * Math.sin(this.t * 23); L.position.copy(P.action.K.footK); }      // jambe ardente : elle éclaire autour d'elle
+    else if (P && !P.rag && P.W.legs && P.element !== 'steel' && P.action.type === 'attack' && P.action.kind === 'kick' && P.action.K && P.action.phase === 1) { L.color.set(ELEMENTS[P.element].color); L.intensity = 1.6 + 0.4 * Math.sin(this.t * 23); L.position.copy(P.action.K.footK); }      // jambe ardente : elle éclaire autour d'elle
     else L.intensity = 0;
+    for (const F of this.fighters) if (F.W.legs && !F.rag && F.alive && F.element !== 'steel' && Math.random() < dt * 9) {      // style Jambes : l'élément couve aux chevilles
+      const f = F.feet[Math.random() < 0.5 ? 'L' : 'R'], q = _w6.set(f.p.x + rndS(0.05), (f.ay || 0) + rnd(0.05, 0.3) * F.scale, f.p.z + rndS(0.05));
+      if (F.element === 'fire') Fx.flame(q, 1, 0.1); else if (F.element === 'ice') Fx.frost(q, 1); else Fx.volt(q, 1);
+    }
     for (const F of this.fighters) if (F !== P && !F.rag && F.element !== 'steel' && F.weapon && F.W.kind !== 'fist' && Math.random() < dt * 10) { const q = _w6.copy(F.hw[F.heldSide]).addScaledVector(F.wDirW, rnd(F.W.b0, F.W.len) * F.scale); if (F.element === 'fire') Fx.flame(q, 1, 0.12); else if (F.element === 'ice') Fx.frost(q, 1); else Fx.volt(q, 1); }
     Player.camera(dtReal); HUD.update();
     if (P) { const so = Gfx.sunOff; Gfx.sun.position.set(P.pos.x + so.x, so.y, P.pos.z + so.z); Gfx.sun.target.position.set(P.pos.x, 0, P.pos.z); }      // l'ombre portée suit le joueur : plus nette

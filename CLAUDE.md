@@ -98,7 +98,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
   - `Fighter.launch` fait voler le combattant sur le dos (`action.fly`). Un mur l'arrête.
   - En vol, il renverse ceux qu'il percute (effet quilles). La liste `fly.hit` est partagée par toute la chaîne pour que chacun ne soit renversé qu'une fois.
 - **Rythme :** `GAME_SPEED` (00_core.js, 0,85) ralentit tout le jeu ; `DASH_CD` impose 4 s entre deux dashs du joueur. L IA punit les coups ratés, vise les membres déjà blessés, brise les gardes tenues, recule devant le retourné et prend le joueur à revers quand un autre attaque.
-- **Style « Jambes » :** arme `legs` de type `fist`. Le clic gauche enchaîne coup de face, circulaire et balayage. Le coup lourd déclenche le retourné. Mains dans le dos, petits rebonds, jambe en feu pendant les coups (effet visuel seulement). Les bras pendant un coup de pied viennent de `kickGeo` (`aR`, `aL`, `arms`).
+- **Style « Jambes » :** arme `legs` de type `fist`. Le clic gauche enchaîne coup de face, circulaire et balayage. Le coup lourd déclenche le retourné. Mains dans le dos, petits rebonds. Il porte l'élément choisi (touche E) : feu, glace ou foudre enveloppent la jambe, s'appliquent aux touches et donnent le pouvoir correspondant ; en acier, pas d'effet. Les bras pendant un coup de pied viennent de `kickGeo` (`aR`, `aL`, `arms`).
 
 ### Duel en ligne (08e_net.js)
 

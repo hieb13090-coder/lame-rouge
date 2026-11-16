@@ -298,14 +298,16 @@ const Combat = {
           const d = A.victim && !A.victim.rag ? Math.hypot(A.victim.pos.x - F.pos.x, A.victim.pos.z - F.pos.z) : 1.6, k = clamp((d - 1.15) * 4.5, 0, 6) + 1.5;
           F.push.x += Math.sin(A.kyaw) * k; F.push.z += Math.cos(A.kyaw) * k;
         }
-        F.trail = F.W.legs ? Trails.get(0xff7a2a, A.kv === 'k540' ? 0.8 : 0.5) : Trails.get(0xffffff, A.kv === 'k540' ? 0.35 : 0.2); Sfx.whoosh(F.pos, A.kv === 'k540'); if (A.kv === 'k540') Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 5, 0.25);
+        F.trail = F.W.legs && F.element !== 'steel' ? Trails.get(ELEMENTS[F.element].color, A.kv === 'k540' ? 0.8 : 0.5) : Trails.get(0xffffff, A.kv === 'k540' ? 0.35 : 0.2); Sfx.whoosh(F.pos, A.kv === 'k540'); if (A.kv === 'k540') Fx.dust(this._k.set(F.pos.x, 0.05, F.pos.z), 5, 0.25);
       }
     } else if (A.phase === 1) {
       A.s = Math.min(1, A.pt / A.act);
       if (A.K && A.s > 0.15 && A.s < 0.95) {
-        if (F.W.legs) {                                                          // jambe ardente : du pied jusqu'au genou
-          const big = A.kv === 'k540'; Fx.flame(A.K.footK, big ? 4 : 3, big ? 0.26 : 0.2);
-          Fx.flame(this._k.copy(A.K.footK).lerp(A.K.hipK, 0.3), big ? 2 : 1, big ? 0.2 : 0.15);
+        if (F.W.legs && F.element !== 'steel') {                                 // style Jambes : l'élément enveloppe la jambe, du pied jusqu'au genou
+          const big = A.kv === 'k540', knee = this._k.copy(A.K.footK).lerp(A.K.hipK, 0.3);
+          if (F.element === 'fire') { Fx.flame(A.K.footK, big ? 4 : 3, big ? 0.26 : 0.2); Fx.flame(knee, big ? 2 : 1, big ? 0.2 : 0.15); }
+          else if (F.element === 'ice') { Fx.frost(A.K.footK, big ? 4 : 3); Fx.frost(knee, 1); }
+          else { Fx.volt(A.K.footK, big ? 3 : 2); if (Math.random() < 0.5) Fx.arc(knee, A.K.footK, 0.04); }
         }
         if (A.kv === 'low' && Math.random() < 0.6) Fx.dust(this._k.set(A.K.footK.x, 0.05, A.K.footK.z), 1, 0.2);
       }
@@ -414,7 +416,7 @@ const Combat = {
       else if (!armored) V.stagger(V.isPlayer ? 0.2 : A.kind === 'kick' ? 0.55 : A.breaker || A.full ? 1.0 : heavy ? 0.62 : 0.36);
     }
     if (res === 'fatal' && !V.dead) V.kill(type === 'pierce' ? 'transpercé' : 'assommé', this._d.copy(dir).multiplyScalar(A.kind === 'kick' ? (A.kv === 'k540' ? 11 : 5) : 2));
-    if (F.element !== 'steel' && A.kind !== 'kick' && res !== 'none' && res !== 'armor') {
+    if (F.element !== 'steel' && (A.kind !== 'kick' || F.W.legs) && res !== 'none' && res !== 'armor') {      // les jambes portent l'élément, pas un simple coup de pied avec une lame
       if (V.zones[zn].state !== 'severed') V.applyElem(zn, F.element);
       else { if (F.element === 'fire') { Fx.flame(p, 8, 0.3); Sfx.fire(p); } else if (F.element === 'ice') { Fx.shards(p, 10); Sfx.ice(p); } else { Fx.volt(p, 10); Sfx.zap(p); } }
       if (F.element === 'bolt' && zn === 'torso') {                             // la foudre saute au voisin
@@ -486,7 +488,7 @@ const Combat = {
       if (!V.dead && !V.immortal) V.hp -= W.dmg * (A.heavy ? 1.6 : 1) * F.dmgMul;
       res = V.wound(zn, sg, p, type, dir);
       if (res === 'fatal' && !V.dead) V.kill(type === 'pierce' ? 'transpercé' : 'assommé');
-      if (F.element === 'fire' && A.kind !== 'kick') { Fx.flame(p, 8, 0.3); if (V.zones[zn].state !== 'severed') { V.zones[zn].burn = 4; } }
+      if (F.element === 'fire' && (A.kind !== 'kick' || F.W.legs)) { Fx.flame(p, 8, 0.3); if (V.zones[zn].state !== 'severed') { V.zones[zn].burn = 4; } }
       Game.onHit(F, V, zn, res, type, true);
     }
     this.feedback(F, V, zn, res, p, dir, type, true);

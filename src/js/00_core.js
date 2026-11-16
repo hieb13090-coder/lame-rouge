@@ -167,7 +167,7 @@ const Input = {
   end() { this.p = {}; this.mx = 0; this.my = 0; this.lmbP = false; this.lmbR = false; this.rmbP = false; this.hvP = false; this.wheel = 0; },
   clear() { this.k = {}; this.lmb = false; this.rmb = false; this.stick.x = this.stick.y = 0; this.stick.id = -1; this.look.id = -1; const s = $('t-stick'); if (s) s.style.display = 'none'; this.end(); },
   lock() {
-    if (CFG.touch || this.lockFail || !this.canvas.requestPointerLock) return;
+    if (CFG.touch || !this.canvas.requestPointerLock) return;                 // un refus n'est pas définitif : on réessaie au clic suivant
     try { const r = this.canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { this.lockFail = true; }); } catch (e) { this.lockFail = true; }
   },
   unlock() { try { if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* rien */ } },
@@ -181,7 +181,8 @@ const Input = {
       if (e.code === 'Escape' && this.active && !this.locked && this.onPause) this.onPause();
     });
     window.addEventListener('keyup', (e) => { this.k[e.code] = false; });
-    window.addEventListener('blur', () => { this.k = {}; this.lmb = this.rmb = this.hv = false; });
+    window.addEventListener('blur', () => { this.k = {}; this.lmb = this.rmb = this.hv = false; this.mx = this.my = 0; this.inside = false; });
+    document.addEventListener('mouseleave', () => { this.inside = false; });
     document.addEventListener('pointerlockchange', () => {
       const was = this.locked;
       this.locked = document.pointerLockElement === canvas;

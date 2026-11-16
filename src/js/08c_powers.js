@@ -74,7 +74,7 @@ Object.assign(Combat, {
 // ---------------------------------------------------------------- pouvoirs : acier = eau, foudre = éclairs, feu = boule de feu, glace = souffle
 const Powers = {
   balls: [], ballGeo: null, ballMat: null,
-  element(P) { return P.W.kind === 'fist' ? 'steel' : P.element; },
+  element(P) { return P.W.kind === 'fist' && !P.W.legs ? 'steel' : P.element; },
   cast(P) {
     const el = this.element(P);
     if (el === 'steel') return Water.cast(P);

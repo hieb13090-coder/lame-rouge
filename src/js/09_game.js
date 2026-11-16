@@ -121,7 +121,7 @@ const HUD = {
     const P = Game.player, cur = P ? P.weaponId : 'katana', el = P ? P.element : 'steel';
     let h = '';
     WEAPON_ORDER.forEach((w, i) => { const own = Game.owns(w); h += '<div class="wslot' + (w === cur ? ' on' : '') + (own ? '' : ' lock') + '"><kbd>' + (i + 1) + '</kbd><span>' + (own ? WEAPONS[w].short : '?') + '</span></div>'; });
-    h += '<div id="h-elem" class="' + el + '"><kbd>' + (CFG.touch ? 'Lame' : KeyName.KeyE) + '</kbd><b>' + (WEAPONS[cur] && WEAPONS[cur].kind === 'fist' ? '—' : ELEMENTS[el].name) + '</b></div>';
+    h += '<div id="h-elem" class="' + el + '"><kbd>' + (CFG.touch ? 'Lame' : KeyName.KeyE) + '</kbd><b>' + (WEAPONS[cur] && WEAPONS[cur].kind === 'fist' && !WEAPONS[cur].legs ? '—' : ELEMENTS[el].name) + '</b></div>';
     h += '<div id="h-zone"><kbd>' + (CFG.touch ? 'Cible' : 'Molette') + '</kbd><b id="h-zone-t"></b></div>';
     h += '<div id="h-water"><kbd>' + (CFG.touch ? 'Pouvoir' : 'Clic molette') + '</kbd><b>Eau prête</b></div>';
     h += '<div id="h-kunai"><kbd>' + (CFG.touch ? 'Lancer' : KeyName.KeyX) + '</kbd><b>Kunai</b></div>';
@@ -561,8 +561,12 @@ const Game = {
     // lueur de la lame élémentaire du joueur
     const L = Gfx.weaponLight;
     if (P && !P.rag && P.element !== 'steel' && P.weapon && P.W.kind !== 'fist') { L.color.set(ELEMENTS[P.element].color); L.intensity = 1.1 + 0.25 * Math.sin(this.t * 17); L.position.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, P.W.len * 0.6 * P.scale); if (P.element === 'fire' && Math.random() < dt * 22) Fx.flame(_w6.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, rnd(P.W.b0, P.W.len) * P.scale), 1, 0.12); else if (P.element === 'ice' && Math.random() < dt * 9) Fx.frost(_w6.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, rnd(P.W.b0, P.W.len) * P.scale), 1); else if (P.element === 'bolt' && Math.random() < dt * 14) Fx.arc(_w5.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, P.W.b0 * P.scale), _w6.copy(P.hw[P.heldSide]).addScaledVector(P.wDirW, P.W.len * P.scale), 0.05); }
-    else if (P && !P.rag && P.W.legs && P.action.type === 'attack' && P.action.kind === 'kick' && P.action.K && P.action.phase === 1) { L.color.set(0xff7a2a); L.intensity = 1.6 + 0.4 * Math.sin(this.t * 23); L.position.copy(P.action.K.footK); }      // jambe ardente : elle éclaire autour d'elle
+    else if (P && !P.rag && P.W.legs && P.element !== 'steel' && P.action.type === 'attack' && P.action.kind === 'kick' && P.action.K && P.action.phase === 1) { L.color.set(ELEMENTS[P.element].color); L.intensity = 1.6 + 0.4 * Math.sin(this.t * 23); L.position.copy(P.action.K.footK); }      // jambe ardente : elle éclaire autour d'elle
     else L.intensity = 0;
+    for (const F of this.fighters) if (F.W.legs && !F.rag && F.alive && F.element !== 'steel' && Math.random() < dt * 9) {      // style Jambes : l'élément couve aux chevilles
+      const f = F.feet[Math.random() < 0.5 ? 'L' : 'R'], q = _w6.set(f.p.x + rndS(0.05), (f.ay || 0) + rnd(0.05, 0.3) * F.scale, f.p.z + rndS(0.05));
+      if (F.element === 'fire') Fx.flame(q, 1, 0.1); else if (F.element === 'ice') Fx.frost(q, 1); else Fx.volt(q, 1);
+    }
     for (const F of this.fighters) if (F !== P && !F.rag && F.element !== 'steel' && F.weapon && F.W.kind !== 'fist' && Math.random() < dt * 10) { const q = _w6.copy(F.hw[F.heldSide]).addScaledVector(F.wDirW, rnd(F.W.b0, F.W.len) * F.scale); if (F.element === 'fire') Fx.flame(q, 1, 0.12); else if (F.element === 'ice') Fx.frost(q, 1); else Fx.volt(q, 1); }
     Player.camera(dtReal); HUD.update();
     if (P) { const so = Gfx.sunOff; Gfx.sun.position.set(P.pos.x + so.x, so.y, P.pos.z + so.z); Gfx.sun.target.position.set(P.pos.x, 0, P.pos.z); }      // l'ombre portée suit le joueur : plus nette

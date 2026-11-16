@@ -97,7 +97,7 @@ class Fighter {
     if (this.zones) this.caps();
   }
   setElement(e) {
-    if (this.W.kind === 'fist') e = 'steel';
+    if (this.W.kind === 'fist' && !this.W.legs) e = 'steel';                   // poings nus : pas d'élément ; le style Jambes, lui, en porte un
     this.element = e; const m = this.weapon.mat;
     if (m) { if (e === 'steel') m.emissive.setRGB(0, 0, 0); else m.emissive.copy(col(ELEMENTS[e].color)).multiplyScalar(1.1); }
   }
