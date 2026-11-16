@@ -97,6 +97,7 @@ const Gfx = {
       if (r.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget) { rt = new THREE.WebGLMultisampleRenderTarget(sz.x, sz.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat }); rt.samples = 4; this.ownRT = true; }
       const c = this.composer = rt ? new THREE.EffectComposer(r, rt) : new THREE.EffectComposer(r);
       c.addPass(new THREE.RenderPass(this.scene, this.camera));
+      if (!CFG.lite) this.setupAO(c);
       this.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.62, 0.55, 0.8); c.addPass(this.bloom);
       this.final = new THREE.ShaderPass({
         uniforms: { tDiffuse: { value: null }, time: { value: 0 }, blur: { value: 0 } },
@@ -122,18 +123,71 @@ const Gfx = {
       const v = $('vignette'); if (v) v.hidden = true;
     } catch (e) { this.composer = null; }
   },
+  // occlusion ambiante (ordinateur) : une passe de profondeur à mi-résolution, puis chaque pixel regarde la géométrie autour de lui
+  // et s'assombrit dans les creux : pieds sur le sol, coins des murs, plis entre les corps
+  setupAO(c) {
+    const opt = { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter };
+    this.aoRT = new THREE.WebGLRenderTarget(2, 2, opt); this.aoBuf = new THREE.WebGLRenderTarget(2, 2, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    this.depthMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+    const vs = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }', head = '#include <packing>\nuniform sampler2D tDepth; uniform float cn, cf, p00, p11; varying vec2 vUv;\nfloat dep(vec2 u){ return unpackRGBAToDepth(texture2D(tDepth, u)); }\nvec3 vpos(vec2 u){ float z = perspectiveDepthToViewZ(dep(u), cn, cf); vec2 nd = u * 2.0 - 1.0; return vec3(nd.x * -z / p00, nd.y * -z / p11, z); }\n';
+    const U = this.aoU = { tDepth: { value: this.aoRT.texture }, cn: { value: 0.1 }, cf: { value: 200 }, p00: { value: 1 }, p11: { value: 1 }, res: { value: new THREE.Vector2(2, 2) }, rad: { value: 0.6 }, str: { value: 2.6 } };
+    // 1) calcul à mi-résolution : 16 échantillons en spirale, rotation par pixel (le flou d'après efface le grain)
+    this.aoMat = new THREE.ShaderMaterial({ uniforms: U, depthTest: false, depthWrite: false, vertexShader: vs, fragmentShader: head + [
+      'uniform float rad, str; uniform vec2 res;',
+      'void main(){',
+      '  float d = dep(vUv); if (d > 0.99995) { gl_FragColor = vec4(1.0); return; }',
+      '  vec2 tx = 1.0 / res; vec3 P = vpos(vUv);',
+      '  vec3 a1 = vpos(vUv + vec2(tx.x, 0.0)) - P, a2 = P - vpos(vUv - vec2(tx.x, 0.0)), b1 = vpos(vUv + vec2(0.0, tx.y)) - P, b2 = P - vpos(vUv - vec2(0.0, tx.y));',
+      '  vec3 n = normalize(cross(abs(a1.z) < abs(a2.z) ? a1 : a2, abs(b1.z) < abs(b2.z) ? b1 : b2)); if (dot(n, P) > 0.0) n = -n;',
+      '  vec2 ip = mod(floor(gl_FragCoord.xy), 4.0); float ang = (ip.x * 4.0 + ip.y) * 0.3927 + (ip.x * 0.7), rs = rad * p11 / max(0.5, -P.z) * 0.5, ao = 0.0;',
+      '  for (int i = 0; i < 16; i++) {',
+      '    float f = (float(i) + 0.5) / 16.0, a = ang + float(i) * 2.399; vec2 o = vec2(cos(a) * res.y / res.x, sin(a)) * rs * sqrt(f);',
+      '    vec3 v = vpos(vUv + o) - P; float vv = dot(v, v);',
+      '    ao += max(0.0, dot(v, n) - 0.03 * -P.z - 0.02) / (vv + 0.03) * (1.0 - smoothstep(rad * rad, 4.0 * rad * rad, vv));',
+      '  }',
+      '  gl_FragColor = vec4(vec3(clamp(1.0 - str * ao * rad / 16.0, 0.3, 1.0)), 1.0);',
+      '}'].join('\n') });
+    this.aoQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.aoMat); this.aoQuad.frustumCulled = false; this.aoScene = new THREE.Scene(); this.aoScene.add(this.aoQuad); this.aoCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    // 2) composition : flou 4×4 qui respecte les bords (on ne mélange pas un personnage avec le mur derrière lui)
+    this.ao = new THREE.ShaderPass({
+      uniforms: { tDiffuse: { value: null }, tAO: { value: null }, tDepth: { value: null }, cn: { value: 0.1 }, cf: { value: 200 }, p00: { value: 1 }, p11: { value: 1 }, res: { value: new THREE.Vector2(2, 2) } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: head + [
+        'uniform sampler2D tDiffuse, tAO; uniform vec2 res;',
+        'void main(){',
+        '  vec4 col = texture2D(tDiffuse, vUv); float z = perspectiveDepthToViewZ(dep(vUv), cn, cf), s = 0.0, w = 0.0;',
+        '  for (int y = -2; y < 2; y++) for (int x = -2; x < 2; x++) { vec2 u = vUv + (vec2(float(x), float(y)) + 0.5) / res; float zz = perspectiveDepthToViewZ(dep(u), cn, cf), k = 1.0 / (0.02 + abs(zz - z) * 4.0 / max(1.0, -z)); s += texture2D(tAO, u).r * k; w += k; }',
+        '  gl_FragColor = vec4(col.rgb * (s / w), col.a);',
+        '}'].join('\n'),
+    });
+    const V = this.ao.uniforms; V.tAO.value = this.aoBuf.texture; V.tDepth.value = this.aoRT.texture;      // ShaderPass clone ses uniformes : on rebranche les vraies cibles
+    c.addPass(this.ao);
+  },
+  aoDepth() {                                                                   // profondeur sans les effets transparents (brume, halos, particules, sang qui vole)
+    const r = this.renderer, S = this.scene, C = this.camera, hid = this._hid || (this._hid = []); hid.length = 0;
+    S.traverseVisible((o) => { const m = o.material; if (o.isPoints || o.isSprite || o.isLine || (m && (Array.isArray(m) ? m[0].transparent : m.transparent || m.blending === THREE.AdditiveBlending))) hid.push(o); });
+    for (const o of hid) o.visible = false;
+    const au = r.shadowMap.autoUpdate, cc = r.getClearColor(this._cc || (this._cc = new THREE.Color())), ca = r.getClearAlpha();
+    r.shadowMap.autoUpdate = false; S.overrideMaterial = this.depthMat; r.setClearColor(0xffffff, 1);
+    r.setRenderTarget(this.aoRT); r.clear(); r.render(S, C); r.setRenderTarget(null);
+    S.overrideMaterial = null; r.setClearColor(cc, ca); r.shadowMap.autoUpdate = au;
+    for (const o of hid) o.visible = true;
+    for (const U of [this.aoU, this.ao.uniforms]) { U.cn.value = C.near; U.cf.value = C.far; U.p00.value = C.projectionMatrix.elements[0]; U.p11.value = C.projectionMatrix.elements[5]; }
+    r.setRenderTarget(this.aoBuf); r.render(this.aoScene, this.aoCam); r.setRenderTarget(null);
+  },
   resize() {
     const c = this.renderer.domElement, w = Math.max(2, c.clientWidth), h = Math.max(2, c.clientHeight);
     this.w = w; this.h = h;
     const pr = Math.min(window.devicePixelRatio || 1, CFG.lite ? 1.25 : 1.75);
     this.renderer.setPixelRatio(pr); this.renderer.setSize(w, h, false);
     if (this.composer) { if (this.ownRT) this.composer.setSize(Math.round(w * pr), Math.round(h * pr)); else { this.composer.setPixelRatio(pr); this.composer.setSize(w, h); } }
+    if (this.aoRT) { const aw = Math.round(w * pr * 0.5), ah = Math.round(h * pr * 0.5); this.aoRT.setSize(aw, ah); this.aoBuf.setSize(aw, ah); this.aoU.res.value.set(aw, ah); this.ao.uniforms.res.value.set(aw, ah); }
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
     Fx.setScale((h * pr) / (2 * Math.tan((this.camera.fov * PI) / 360)), this.composer ? 1 : 0);
   },
   render(dt) {
     this.t += dt || 0.016;
-    if (this.composer) { this.final.uniforms.time.value = this.t % 97; this.final.uniforms.blur.value = this.punch * this.punch * 0.03; this.composer.render(); } else this.renderer.render(this.scene, this.camera);
+    if (this.composer) { this.final.uniforms.time.value = this.t % 97; this.final.uniforms.blur.value = this.punch * this.punch * 0.03; if (this.ao) { this.ao.enabled = !CFG.lite && !this.aoOff; if (this.ao.enabled) this.aoDepth(); } this.composer.render(); } else this.renderer.render(this.scene, this.camera);
   },
 };
 

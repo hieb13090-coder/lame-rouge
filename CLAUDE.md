@@ -76,6 +76,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 
 - Arènes : `Env` dans `02_gfx.js`, une par clé de `ARENAS` (`dojo`, `bridge`, `fortress`).
 - Lumières, brouillard, exposition et bloom par arène : `PALETTES`.
+- Occlusion ambiante (ordinateur, coupée en mode allégé) : `Gfx.setupAO` / `aoDepth` dans 02_gfx.js. Passe de profondeur à mi-résolution sans les objets transparents, calcul, puis flou qui respecte les bords. `Gfx.aoOff = true` la coupe pour comparer.
 - Textures : générées sur canvas. Celles des arènes sont dans `02b_textures.js` (`Tex.dojoFloor`, `burntFloor`, `wall`, `planks`) : chaque pixel donne couleur, hauteur et rugosité, et `Tex.mat` en fait un matériau (carte de normales + carte de rugosité). Il n'y a aucun fichier image.
 - Personnages : `blender/personnages.py` construit tous les types (apparence dans `blender/looks.json`) et régénère `src/js/04c_perso.js`.
 
