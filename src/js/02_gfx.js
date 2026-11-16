@@ -100,14 +100,18 @@ const Gfx = {
       if (!CFG.lite) this.setupAO(c);
       this.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.62, 0.55, 0.8); c.addPass(this.bloom);
       this.final = new THREE.ShaderPass({
-        uniforms: { tDiffuse: { value: null }, time: { value: 0 }, blur: { value: 0 } },
+        uniforms: { tDiffuse: { value: null }, time: { value: 0 }, blur: { value: 0 }, tEye: { value: null }, eye: { value: 0 }, eyeTx: { value: new THREE.Vector2(1 / 384, 1 / 216) } },
         vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
         fragmentShader: [
-          'uniform sampler2D tDiffuse; uniform float time; uniform float blur; varying vec2 vUv;',
+          'uniform sampler2D tDiffuse, tEye; uniform float time; uniform float blur, eye; uniform vec2 eyeTx; varying vec2 vUv;',
           'float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
           'void main(){',
-          '  vec2 d = vUv - 0.5; float r2 = dot(d, d);',
-          '  vec3 c = vec3(texture2D(tDiffuse, vUv + d * r2 * 0.014).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - d * r2 * 0.014).b);',
+          '  vec2 d = vUv - 0.5; float r2 = dot(d, d), b = 0.0; vec2 uv = vUv, gb = vec2(0.0);',
+          // sang dans les yeux : la nappe réfracte l'image, l'assombrit en rouge, et accroche un reflet sur ses bords
+          '  if (eye > 0.001) { b = texture2D(tEye, vUv).a; gb = vec2(texture2D(tEye, vUv + vec2(eyeTx.x, 0.0)).a - texture2D(tEye, vUv - vec2(eyeTx.x, 0.0)).a, texture2D(tEye, vUv + vec2(0.0, eyeTx.y)).a - texture2D(tEye, vUv - vec2(0.0, eyeTx.y)).a); uv += gb * 0.035 + vec2(0.0, b * 0.012); }',
+          '  vec3 c = vec3(texture2D(tDiffuse, uv + d * r2 * 0.014).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - d * r2 * 0.014).b);',
+          '  if (eye > 0.001) { float cov = smoothstep(0.3, 0.55, b); vec3 film = c * vec3(0.62, 0.05, 0.04) + vec3(0.05, 0.0, 0.0); c = mix(c, film, cov * 0.92); c += vec3(0.5, 0.18, 0.16) * pow(max(0.0, dot(normalize(vec3(gb, 0.08)), normalize(vec3(-0.4, 0.6, 0.7)))), 18.0) * cov;',
+          '    float vg = smoothstep(0.12, 0.62, r2 * 2.6) * eye; c = mix(c, c * vec3(0.55, 0.06, 0.05), vg * 0.75); }',
           '  if (blur > 0.0005) { vec3 a = c; for (int i = 1; i <= 5; i++) { float k = float(i) * blur; a += texture2D(tDiffuse, vUv - d * k).rgb; } c = a / 6.0; }',
           '  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));',
           '  c = mix(vec3(l), c, 1.14);',
@@ -119,10 +123,43 @@ const Gfx = {
           '  gl_FragColor = vec4(c, 1.0);',
           '}'].join('\n'),
       });
-      c.addPass(this.final);
+      c.addPass(this.final); this.eyeInit();
       const v = $('vignette'); if (v) v.hidden = true;
     } catch (e) { this.composer = null; }
   },
+  // ---- vision ensanglantée : quand on prend un coup à la tête, le sang coule sur l'écran puis sèche lentement
+  eyeInit() {
+    const c = document.createElement('canvas'); c.width = 384; c.height = 216;
+    this.eye = { c, x: c.getContext('2d'), tex: new THREE.CanvasTexture(c), k: 0, drips: [], live: false };
+    this.eye.tex.minFilter = this.eye.tex.magFilter = THREE.LinearFilter; this.final.uniforms.tEye.value = this.eye.tex;
+  },
+  eyeHit(pow) {
+    const E = this.eye; if (!E) return; const x = E.x, W = 384, H = 216, side = Math.random() < 0.5 ? -1 : 1;
+    E.k = Math.min(1, E.k + 0.45 * pow); E.live = true;
+    x.filter = 'blur(3px)'; x.fillStyle = '#000';
+    for (let n = 0; n < 2 + Math.round(2 * pow); n++) {                          // taches : des grappes de gouttes qui entrent par le haut et par un côté
+      const cx = 192 + side * rnd(30, 200), cy = rnd(-20, 40), sw = rnd(30, 70) * (0.7 + 0.5 * pow), sh = rnd(40, 110) * (0.7 + 0.5 * pow);
+      for (let i = 0; i < 26; i++) { const t = Math.random(), px = cx + rndS(sw) * (1 - 0.5 * t), py = cy + t * sh, rr = rnd(5, 16) * (1 - 0.55 * t); x.beginPath(); x.arc(px, py, rr, 0, TAU); x.fill(); }
+      for (let i = 0; i < 3; i++) E.drips.push({ x: cx + rndS(sw * 0.5), y: cy + sh * rnd(0.5, 0.9), v: rnd(12, 34), w: rnd(4, 8), life: rnd(2, 5) });
+    }
+    x.filter = 'none';
+    for (let i = 0; i < 40 * pow; i++) { const px = 192 + side * rnd(-40, 210), py = rnd(0, H * 0.75), rr = rnd(1, 3.5); x.fillStyle = '#000'; x.beginPath(); x.arc(px, py, rr, 0, TAU); x.fill(); }      // gouttelettes projetées
+    E.tex.needsUpdate = true;
+  },
+  eyeUpdate(dt, bleed) {
+    const E = this.eye; if (!E || !E.live) return; const x = E.x;
+    for (let i = E.drips.length - 1; i >= 0; i--) {                              // coulures : elles descendent, ralentissent, s'amincissent
+      const d = E.drips[i]; d.life -= dt; d.v *= Math.exp(-dt * 0.5); const ny = d.y + d.v * dt, nx = d.x + rndS(0.4);
+      x.strokeStyle = '#000'; x.lineWidth = d.w; x.lineCap = 'round'; x.beginPath(); x.moveTo(d.x, d.y); x.lineTo(nx, ny); x.stroke();
+      d.x = nx; d.y = ny; d.w *= Math.exp(-dt * 0.25); if (d.life <= 0 || d.y > 230 || d.v < 2) { x.fillStyle = 'rgba(0,0,0,0.85)'; x.beginPath(); x.arc(d.x, d.y, d.w * 0.9, 0, TAU); x.fill(); E.drips.splice(i, 1); }
+    }
+    if (bleed > 0 && Math.random() < dt * bleed * 1.5 && E.drips.length < 12) E.drips.push({ x: rnd(20, 364), y: -4, v: rnd(10, 25), w: rnd(2, 4), life: rnd(2, 4) });      // tête qui saigne : ça continue de couler
+    x.globalCompositeOperation = 'destination-out'; x.fillStyle = 'rgba(0,0,0,' + Math.min(1, dt * (bleed > 0 ? 0.08 : 0.2)) + ')'; x.fillRect(0, 0, 384, 216); x.globalCompositeOperation = 'source-over';
+    E.k = Math.max(0, E.k - dt * (bleed > 0 ? 0.04 : 0.12));
+    E.tex.needsUpdate = true; this.final.uniforms.eye.value = Math.max(0.002, E.k);
+    if (E.k <= 0 && !E.drips.length && bleed <= 0) { E.live = false; x.clearRect(0, 0, 384, 216); E.tex.needsUpdate = true; this.final.uniforms.eye.value = 0; }
+  },
+  eyeClear() { const E = this.eye; if (!E) return; E.k = 0; E.drips.length = 0; E.live = false; E.x.clearRect(0, 0, 384, 216); E.tex.needsUpdate = true; this.final.uniforms.eye.value = 0; },
   // occlusion ambiante (ordinateur) : une passe de profondeur à mi-résolution, puis chaque pixel regarde la géométrie autour de lui
   // et s'assombrit dans les creux : pieds sur le sol, coins des murs, plis entre les corps
   setupAO(c) {

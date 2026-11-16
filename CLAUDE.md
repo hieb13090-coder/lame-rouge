@@ -102,6 +102,9 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 - **Rythme :** `GAME_SPEED` (00_core.js, 0,85) ralentit tout le jeu ; `DASH_CD` impose 4 s entre deux dashs du joueur. L IA punit les coups ratés, vise les membres déjà blessés, brise les gardes tenues, recule devant le retourné et prend le joueur à revers quand un autre attaque.
 - **Style « Jambes » :** arme `legs` de type `fist`. Le clic gauche enchaîne coup de face, circulaire et balayage. Le coup lourd déclenche le retourné. Mains dans le dos, petits rebonds. Il porte l'élément choisi (touche E) : feu, glace ou foudre enveloppent la jambe, s'appliquent aux touches et donnent le pouvoir correspondant ; en acier, pas d'effet. Finisher : talon abattu (`A.stomp`, `advanceStomp`/`stompGeo`/`stompHit` dans 08_armor_water.js), tête visée = crâne écrasé. Les bras pendant un coup de pied viennent de `kickGeo` (`aR`, `aL`, `arms`).
 
+- **Vue à la première personne :** touche Y (`Player.setFps`, mémorisée dans `Save.data.fps`). La caméra se place aux yeux (articulation `neck`), la tête du joueur est masquée (`J.neck.visible`), retour automatique à la 3e personne si le joueur est mort ou décapité.
+- **Vision ensanglantée :** coup reçu à la tête → `Gfx.eyeHit`, sang qui coule sur l'écran (canvas `Gfx.eye`, réfracté dans la passe finale), sèche en quelques secondes, continue de couler tant que la tête saigne.
+
 ### Duel en ligne (08e_net.js)
 
 - **Principe :**

@@ -293,6 +293,7 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
 @media (max-height:660px){ #h-combos:not(.force){display:none} }
 @media (max-height:520px){ #h-body ul{display:none} .keys{display:none} }
 @media (prefers-reduced-motion:reduce){ #banner,#h-feed p{animation-duration:.01s;animation-iteration-count:1} #lens i::after{animation:none} #banner{animation:none} }
+  #fpsdot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: rgba(240, 232, 214, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); pointer-events: none; }
 </style>
 
 <div id="app">
@@ -322,7 +323,7 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
     <div id="cross"><i></i><b id="pring"></b><b id="charge"><i></i></b><span id="seq"></span><span id="aim"></span><div id="edge"></div></div>
     <div id="h-boss"></div>
     <div id="tuto" hidden><small id="tu-n"></small><b id="tu-t"></b><p id="tu-d"></p><em id="tu-hint">Entrée : passer cette étape</em><button id="tu-skip" type="button" hidden>Passer</button></div>
-    <div id="combo"></div><div id="streak"></div>
+    <div id="combo"></div><div id="streak"></div><div id="fpsdot" hidden></div>
     <div id="prompt" hidden></div>
     <div id="banner" hidden><b></b><small></small></div>
   </div>
@@ -1544,7 +1545,7 @@ const Save = {
 };
 
 // ---------------------------------------------------------------- entrées
-const KeyName = { KeyW: 'Z', KeyA: 'Q', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyF: 'F', KeyH: 'H', KeyM: 'M', KeyN: 'N', KeyB: 'B', KeyV: 'V', KeyK: 'K', KeyL: 'L', KeyI: 'I', KeyP: 'P', KeyR: 'R', KeyT: 'T', KeyQ: 'A', KeyG: 'G', KeyC: 'C', KeyO: 'O', KeyX: 'X', KeyZ: 'W', KeyJ: 'J' };
+const KeyName = { KeyW: 'Z', KeyA: 'Q', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyF: 'F', KeyH: 'H', KeyM: 'M', KeyN: 'N', KeyB: 'B', KeyV: 'V', KeyK: 'K', KeyL: 'L', KeyI: 'I', KeyP: 'P', KeyR: 'R', KeyT: 'T', KeyQ: 'A', KeyG: 'G', KeyC: 'C', KeyO: 'O', KeyX: 'X', KeyZ: 'W', KeyJ: 'J', KeyY: 'Y' };
 (function guessLayout() {
   const fr = /^fr/i.test(navigator.language || 'fr');
   if (!fr) { KeyName.KeyW = 'W'; KeyName.KeyA = 'A'; KeyName.KeyQ = 'Q'; KeyName.KeyZ = 'Z'; }
@@ -1885,14 +1886,18 @@ const Gfx = {
       if (!CFG.lite) this.setupAO(c);
       this.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.62, 0.55, 0.8); c.addPass(this.bloom);
       this.final = new THREE.ShaderPass({
-        uniforms: { tDiffuse: { value: null }, time: { value: 0 }, blur: { value: 0 } },
+        uniforms: { tDiffuse: { value: null }, time: { value: 0 }, blur: { value: 0 }, tEye: { value: null }, eye: { value: 0 }, eyeTx: { value: new THREE.Vector2(1 / 384, 1 / 216) } },
         vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
         fragmentShader: [
-          'uniform sampler2D tDiffuse; uniform float time; uniform float blur; varying vec2 vUv;',
+          'uniform sampler2D tDiffuse, tEye; uniform float time; uniform float blur, eye; uniform vec2 eyeTx; varying vec2 vUv;',
           'float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
           'void main(){',
-          '  vec2 d = vUv - 0.5; float r2 = dot(d, d);',
-          '  vec3 c = vec3(texture2D(tDiffuse, vUv + d * r2 * 0.014).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - d * r2 * 0.014).b);',
+          '  vec2 d = vUv - 0.5; float r2 = dot(d, d), b = 0.0; vec2 uv = vUv, gb = vec2(0.0);',
+          // sang dans les yeux : la nappe réfracte l'image, l'assombrit en rouge, et accroche un reflet sur ses bords
+          '  if (eye > 0.001) { b = texture2D(tEye, vUv).a; gb = vec2(texture2D(tEye, vUv + vec2(eyeTx.x, 0.0)).a - texture2D(tEye, vUv - vec2(eyeTx.x, 0.0)).a, texture2D(tEye, vUv + vec2(0.0, eyeTx.y)).a - texture2D(tEye, vUv - vec2(0.0, eyeTx.y)).a); uv += gb * 0.035 + vec2(0.0, b * 0.012); }',
+          '  vec3 c = vec3(texture2D(tDiffuse, uv + d * r2 * 0.014).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - d * r2 * 0.014).b);',
+          '  if (eye > 0.001) { float cov = smoothstep(0.3, 0.55, b); vec3 film = c * vec3(0.62, 0.05, 0.04) + vec3(0.05, 0.0, 0.0); c = mix(c, film, cov * 0.92); c += vec3(0.5, 0.18, 0.16) * pow(max(0.0, dot(normalize(vec3(gb, 0.08)), normalize(vec3(-0.4, 0.6, 0.7)))), 18.0) * cov;',
+          '    float vg = smoothstep(0.12, 0.62, r2 * 2.6) * eye; c = mix(c, c * vec3(0.55, 0.06, 0.05), vg * 0.75); }',
           '  if (blur > 0.0005) { vec3 a = c; for (int i = 1; i <= 5; i++) { float k = float(i) * blur; a += texture2D(tDiffuse, vUv - d * k).rgb; } c = a / 6.0; }',
           '  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));',
           '  c = mix(vec3(l), c, 1.14);',
@@ -1904,10 +1909,43 @@ const Gfx = {
           '  gl_FragColor = vec4(c, 1.0);',
           '}'].join('\n'),
       });
-      c.addPass(this.final);
+      c.addPass(this.final); this.eyeInit();
       const v = $('vignette'); if (v) v.hidden = true;
     } catch (e) { this.composer = null; }
   },
+  // ---- vision ensanglantée : quand on prend un coup à la tête, le sang coule sur l'écran puis sèche lentement
+  eyeInit() {
+    const c = document.createElement('canvas'); c.width = 384; c.height = 216;
+    this.eye = { c, x: c.getContext('2d'), tex: new THREE.CanvasTexture(c), k: 0, drips: [], live: false };
+    this.eye.tex.minFilter = this.eye.tex.magFilter = THREE.LinearFilter; this.final.uniforms.tEye.value = this.eye.tex;
+  },
+  eyeHit(pow) {
+    const E = this.eye; if (!E) return; const x = E.x, W = 384, H = 216, side = Math.random() < 0.5 ? -1 : 1;
+    E.k = Math.min(1, E.k + 0.45 * pow); E.live = true;
+    x.filter = 'blur(3px)'; x.fillStyle = '#000';
+    for (let n = 0; n < 2 + Math.round(2 * pow); n++) {                          // taches : des grappes de gouttes qui entrent par le haut et par un côté
+      const cx = 192 + side * rnd(30, 200), cy = rnd(-20, 40), sw = rnd(30, 70) * (0.7 + 0.5 * pow), sh = rnd(40, 110) * (0.7 + 0.5 * pow);
+      for (let i = 0; i < 26; i++) { const t = Math.random(), px = cx + rndS(sw) * (1 - 0.5 * t), py = cy + t * sh, rr = rnd(5, 16) * (1 - 0.55 * t); x.beginPath(); x.arc(px, py, rr, 0, TAU); x.fill(); }
+      for (let i = 0; i < 3; i++) E.drips.push({ x: cx + rndS(sw * 0.5), y: cy + sh * rnd(0.5, 0.9), v: rnd(12, 34), w: rnd(4, 8), life: rnd(2, 5) });
+    }
+    x.filter = 'none';
+    for (let i = 0; i < 40 * pow; i++) { const px = 192 + side * rnd(-40, 210), py = rnd(0, H * 0.75), rr = rnd(1, 3.5); x.fillStyle = '#000'; x.beginPath(); x.arc(px, py, rr, 0, TAU); x.fill(); }      // gouttelettes projetées
+    E.tex.needsUpdate = true;
+  },
+  eyeUpdate(dt, bleed) {
+    const E = this.eye; if (!E || !E.live) return; const x = E.x;
+    for (let i = E.drips.length - 1; i >= 0; i--) {                              // coulures : elles descendent, ralentissent, s'amincissent
+      const d = E.drips[i]; d.life -= dt; d.v *= Math.exp(-dt * 0.5); const ny = d.y + d.v * dt, nx = d.x + rndS(0.4);
+      x.strokeStyle = '#000'; x.lineWidth = d.w; x.lineCap = 'round'; x.beginPath(); x.moveTo(d.x, d.y); x.lineTo(nx, ny); x.stroke();
+      d.x = nx; d.y = ny; d.w *= Math.exp(-dt * 0.25); if (d.life <= 0 || d.y > 230 || d.v < 2) { x.fillStyle = 'rgba(0,0,0,0.85)'; x.beginPath(); x.arc(d.x, d.y, d.w * 0.9, 0, TAU); x.fill(); E.drips.splice(i, 1); }
+    }
+    if (bleed > 0 && Math.random() < dt * bleed * 1.5 && E.drips.length < 12) E.drips.push({ x: rnd(20, 364), y: -4, v: rnd(10, 25), w: rnd(2, 4), life: rnd(2, 4) });      // tête qui saigne : ça continue de couler
+    x.globalCompositeOperation = 'destination-out'; x.fillStyle = 'rgba(0,0,0,' + Math.min(1, dt * (bleed > 0 ? 0.08 : 0.2)) + ')'; x.fillRect(0, 0, 384, 216); x.globalCompositeOperation = 'source-over';
+    E.k = Math.max(0, E.k - dt * (bleed > 0 ? 0.04 : 0.12));
+    E.tex.needsUpdate = true; this.final.uniforms.eye.value = Math.max(0.002, E.k);
+    if (E.k <= 0 && !E.drips.length && bleed <= 0) { E.live = false; x.clearRect(0, 0, 384, 216); E.tex.needsUpdate = true; this.final.uniforms.eye.value = 0; }
+  },
+  eyeClear() { const E = this.eye; if (!E) return; E.k = 0; E.drips.length = 0; E.live = false; E.x.clearRect(0, 0, 384, 216); E.tex.needsUpdate = true; this.final.uniforms.eye.value = 0; },
   // occlusion ambiante (ordinateur) : une passe de profondeur à mi-résolution, puis chaque pixel regarde la géométrie autour de lui
   // et s'assombrit dans les creux : pieds sur le sol, coins des murs, plis entre les corps
   setupAO(c) {
@@ -5020,14 +5058,14 @@ const LOCK_FR = { head: 'Tête', armSL: 'Bras à gauche', armSR: 'Bras à droite
 const Player = {
   yaw: 0, pitch: 0.22, dist: 3.5, pivot: new V3(0, 1.5, 0), target: null, hlF: null, combo: 0, lastAtk: -9, near: null, sprint: false, lock: 0, tapC: '', tapT: -9, fov: 62, parryT: -9, dashT: -9, streak: 0, streakT: -9, seq: '', chainT: -9, fin: null, finK: 0,
   _o: new V3(), _e: new V3(), _c1: new V3(), _c2: new V3(), _a: new V3(), _b: new V3(), _pt: new V3(), _d: new V3(),
-  reset(P) { this.yaw = P.yaw; this.pitch = 0.22; this.pivot.set(P.pos.x, 1.5, P.pos.z); this.target = null; this.combo = 0; this.parryT = this.dashT = this.streakT = this.chainT = -9; this.streak = 0; this.seq = ''; this.fin = null; this.finK = 0; },
+  reset(P) { this.fps = !!Save.data.fps; this.yaw = P.yaw; this.pitch = this.fps ? 0.05 : 0.22; this.pivot.set(P.pos.x, 1.5, P.pos.z); this.target = null; this.combo = 0; this.parryT = this.dashT = this.streakT = this.chainT = -9; this.streak = 0; this.seq = ''; this.fin = null; this.finK = 0; },
   setLock(i) { this.lock = (i + LOCKS.length) % LOCKS.length; Sfx.ui(); HUD.zone(); Game.stats.lock = (Game.stats.lock || 0) + 1; },
   update(dt) {
     const P = Game.player; if (!P) return;
     const sens = 0.0024 * (Save.data.sens || 1);
-    this.yaw -= Input.mx * sens; this.pitch = clamp(this.pitch + Input.my * sens, -0.22, 1.1);
+    this.yaw -= Input.mx * sens; this.pitch = clamp(this.pitch + Input.my * sens, this.fps ? -1.1 : -0.22, this.fps ? 1.25 : 1.1);
     const ar = (Input.down('ArrowLeft') ? 1 : 0) - (Input.down('ArrowRight') ? 1 : 0), au = (Input.down('ArrowDown') ? 1 : 0) - (Input.down('ArrowUp') ? 1 : 0);
-    this.yaw += ar * 2.4 * dt; this.pitch = clamp(this.pitch + au * 1.4 * dt, -0.22, 1.1);
+    this.yaw += ar * 2.4 * dt; this.pitch = clamp(this.pitch + au * 1.4 * dt, this.fps ? -1.1 : -0.22, this.fps ? 1.25 : 1.1);
     // visée : molette ou R pour choisir le membre, T pour revenir au viseur libre
     if (Input.wheel) this.setLock(this.lock + (Input.wheel > 0 ? 1 : -1));
     if (Input.hit('KeyR') || Input.hit('ZoneNext')) this.setLock(this.lock + 1);
@@ -5095,6 +5133,7 @@ const Player = {
     this.near = null; let nd = 1.7 * 1.7;
     for (const b of Game.drops) { if (b.dead || !b.ps.length || (Game.mode === 'dungeon' && Game.owns(b.weaponId))) continue; const cx = (b.ps[0].x + b.ps[1].x) / 2, cz = (b.ps[0].z + b.ps[1].z) / 2, d = (cx - P.pos.x) ** 2 + (cz - P.pos.z) ** 2; if (d < nd) { nd = d; this.near = b; } }
     if (this.near && Input.hit('KeyF')) Game.pickup(this.near);
+    if (Input.hit('KeyY')) this.setFps(!this.fps);
   },
   swap(P, id) { if (P.busy || id === P.weaponId) return; P.equip(id); P.setElement(Game.elem); Game.weapon = id; Sfx.ui(); HUD.weapons(); },
   // combos : G = coup léger, L = coup lourd. Le préfixe vient de ce qui précède : parade (P), dash (D), course (S) ou la suite en cours
@@ -5235,8 +5274,30 @@ const Player = {
       this.hlF = best.F; best.F.hl = best.zone; this.target = best; Game.lastSeen = best.F; Game.lastSeenT = Game.t;
     } else this.clearHl();
   },
+  // vue à la première personne : la caméra prend la place des yeux ; la tête du joueur est masquée pour ne pas boucher la vue
+  setFps(on) {
+    this.fps = !!on; Save.data.fps = this.fps; Save.store(); $('fpsdot').hidden = !this.fps;
+    if (this.fps) this.pitch = clamp(this.pitch - 0.2, -1.1, 1.25); else this.pitch = clamp(this.pitch, -0.22, 1.1);
+    HUD.feed(this.fps ? 'Vue à la première personne (' + KeyName.KeyY + ' pour revenir)' : 'Vue à la troisième personne');
+  },
   camera(dt) {
     const P = Game.player, cam = Gfx.camera; if (!P) return;
+    const eyes = this.fps && !P.rag && !P.dead && P.seg.head.state === 'ok' && P.J.neck;
+    if (this.headHid !== P || !!eyes !== !!this.headOff) { if (this.headHid && this.headHid !== P && this.headHid.J.neck) this.headHid.J.neck.visible = true; if (P.J.neck) P.J.neck.visible = !eyes; this.headHid = P; this.headOff = !!eyes; }
+    $('fpsdot').hidden = !eyes;
+    if (eyes) {
+      const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), cp = Math.cos(this.pitch), sp = Math.sin(this.pitch), h = P.J.neck.getWorldPosition(this._e2 || (this._e2 = new V3())), s = P.scale, sh = Gfx.shake;
+      if (sh > 0) Gfx.shake = Math.max(0, sh - dt * 1.6);
+      cam.position.set(h.x + fx * 0.11 * s + rndS(sh) * 0.06, h.y + 0.13 * s + rndS(sh) * 0.05, h.z + fz * 0.11 * s + rndS(sh) * 0.06);
+      this._d.set(cam.position.x + fx * cp, cam.position.y - sp, cam.position.z + fz * cp); cam.lookAt(this._d);
+      this.pivot.set(P.pos.x, 1.5 * s, P.pos.z);                                 // pour repartir en douceur si on repasse à la 3e personne
+      if (Gfx.punch > 0) Gfx.punch = Math.max(0, Gfx.punch - dt * 2.6);
+      const ft = 78 + (P.action.type === 'dodge' ? 8 : this.sprint ? 5 : 0) - 8 * Gfx.punch; this.fov += (ft - this.fov) * (1 - Math.exp(-10 * dt));
+      if (cam.near !== 0.04) { cam.near = 0.04; cam.updateProjectionMatrix(); }
+      if (Math.abs(cam.fov - this.fov) > 0.05) { cam.fov = this.fov; cam.updateProjectionMatrix(); }
+      Sfx.ear.copy(cam.position); return;
+    }
+    if (cam.near !== 0.08) { cam.near = 0.08; cam.updateProjectionMatrix(); }
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -fz, rz = fx, cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
     const ty = P.rag ? 0.75 : 1.5 * P.scale, k = 1 - Math.exp(-16 * dt);
     this.pivot.x += (P.pos.x + rx * 0.5 - this.pivot.x) * k; this.pivot.y += (ty - this.pivot.y) * k; this.pivot.z += (P.pos.z + rz * 0.5 - this.pivot.z) * k;
@@ -6755,10 +6816,10 @@ const HUD = {
   ring(ok) { const r = $('pring'); r.className = ''; void r.offsetWidth; r.className = ok ? 'go' : 'no'; },
   refreshKeys() {
     const K = KeyName, mv = K.KeyW + K.KeyA + K.KeyS + K.KeyD, k = (s) => '<kbd>' + s + '</kbd>';
-    $('h-help').innerHTML = k(mv) + 'bouger ' + k('Maj') + 'courir ' + k('Espace') + 'dash<br>' + k('Molette') + 'membre visé ' + k(K.KeyT) + 'viseur libre<br>' + k('Clic G') + 'frapper ' + k(K.KeyQ) + 'coup lourd<br>' + k('Clic D') + 'parade : appuyer à l\'éclat de l\'arme<br>' + k('Clic molette') + 'pouvoir de la lame<br>' + k(K.KeyX) + 'kunai ' + k(K.KeyZ) + 'repousser ' + k(K.KeyC) + 'coup de pied<br>' + k(K.KeyE) + 'lame ' + k('1-8') + 'armes ' + k(K.KeyF) + 'ramasser';
+    $('h-help').innerHTML = k(mv) + 'bouger ' + k('Maj') + 'courir ' + k('Espace') + 'dash<br>' + k('Molette') + 'membre visé ' + k(K.KeyT) + 'viseur libre<br>' + k('Clic G') + 'frapper ' + k(K.KeyQ) + 'coup lourd<br>' + k('Clic D') + 'parade : appuyer à l\'éclat de l\'arme<br>' + k('Clic molette') + 'pouvoir de la lame<br>' + k(K.KeyX) + 'kunai ' + k(K.KeyZ) + 'repousser ' + k(K.KeyC) + 'coup de pied<br>' + k(K.KeyE) + 'lame ' + k('1-8') + 'armes ' + k(K.KeyF) + 'ramasser<br>' + k(K.KeyY) + 'vue 1re / 3e personne';
     const rows = CFG.touch
       ? [['Pouce gauche', 'se déplacer'], ['Pouce droit', 'tourner la caméra'], ['Cible', 'choisir le membre à frapper : tête, bras, torse, jambes'], ['Frapper', 'toucher : coup léger · maintenir : coup lourd, qui perce la moitié de l\'armure · la liste des combos est dans le menu pause'], ['Garde', 'toucher quand l\'arme ennemie lance un éclat : parade'], ['Dash', 'bond rapide dans la direction du pouce'], ['Pouvoir', 'pouvoir de la lame choisie (recharge 6 s) · près d\'un ennemi à terre, Frapper l\'achève'], ['Kunai', 'lance un couteau sur l\'ennemi visé · 5 par vague'], ['Pied', 'coup de pied retourné : on tourne le dos, on saute et le pied part à hauteur de tête · il projette l\'ennemi au loin, qui renverse ceux qu\'il percute'], ['Jambes', 'style sans arme, uniquement les pieds · Frapper enchaîne coup de face, circulaire et balayage · maintenir Frapper : retourné qui projette'], ['Lame', 'acier, feu, glace, foudre']]
-      : [[mv, 'se déplacer · Maj pour courir'], ['Espace', 'dash (ou deux appuis rapides sur une direction)'], ['Molette', 'choisir le membre à frapper : tête, bras, torse, jambes · ' + K.KeyT + ' : viseur libre'], ['Clic gauche', 'coup léger'], [K.KeyQ, 'coup lourd (aussi : clic gauche maintenu) · il perce la moitié de l\'armure'], ['Clic droit', 'parade : appuyer quand l\'arme ennemie lance un éclat'], ['Clic molette', 'pouvoir de la lame, recharge 6 s · acier : l\'eau saisit le pied et fait tomber · foudre : éclairs du bout des doigts · feu : boule de feu · glace : souffle glacé'], ['Parade parfaite', 'onde de choc : l\'âme de l\'ennemi est projetée hors de son corps, il reste sonné 1,5 s'], ['Garde ennemie', 'à force de bloquer, surtout face à une arme plus lourde, l\'ennemi lâche son arme ou elle se brise'], ['Ennemi à terre', 'clic gauche à moins de 2 m : mise à mort (tête visée : décapitation) · ' + K.KeyQ + ' : coup normal'], [K.KeyX, 'lancer un kunai sur le membre visé · 5 par vague, un de plus à chaque mise à mort'], [K.KeyG, 'gourde de saké, une par vague : rend de la vie et du sang, calme les saignements'], ['Dash', 'traverser un coup au dernier moment : esquive parfaite, le temps ralentit'], [K.KeyZ, 'bourrade de la main libre : repousse, casse la garde, interrompt un coup'], [K.KeyC, 'coup de pied retourné : on tourne le dos, on saute, le pied part à hauteur de tête · il projette l\'ennemi au loin, et celui-ci renverse ceux qu\'il percute'], ['Jambes (arme 9)', 'style sans arme, uniquement les pieds · clic gauche enchaîne coup de face, circulaire et balayage (jambes visées : balayage qui fait tomber) · coup lourd, après un dash ou en courant : retourné qui projette'], ['Combos', 'douze enchaînements de coups légers et lourds : la liste reste affichée à droite pendant le combat'], ['Claymore', 'coup lourd maintenu jusqu\'à l\'éclat doré : tranche un membre en un seul coup'], ['Arme et lame', 'en donjon, on les choisit au menu puis entre deux vagues ; bac à sable : ' + K.KeyE + ' change de lame, 1 à 8 d\'arme, ' + K.KeyF + ' ramasse'], ['Tab', 'afficher ou masquer l\'interface complète : aide, combos, armes, état du corps'], ['Échap', 'pause']];
+      : [[mv, 'se déplacer · Maj pour courir'], ['Espace', 'dash (ou deux appuis rapides sur une direction)'], ['Molette', 'choisir le membre à frapper : tête, bras, torse, jambes · ' + K.KeyT + ' : viseur libre'], ['Clic gauche', 'coup léger'], [K.KeyQ, 'coup lourd (aussi : clic gauche maintenu) · il perce la moitié de l\'armure'], ['Clic droit', 'parade : appuyer quand l\'arme ennemie lance un éclat'], ['Clic molette', 'pouvoir de la lame, recharge 6 s · acier : l\'eau saisit le pied et fait tomber · foudre : éclairs du bout des doigts · feu : boule de feu · glace : souffle glacé'], ['Parade parfaite', 'onde de choc : l\'âme de l\'ennemi est projetée hors de son corps, il reste sonné 1,5 s'], ['Garde ennemie', 'à force de bloquer, surtout face à une arme plus lourde, l\'ennemi lâche son arme ou elle se brise'], ['Ennemi à terre', 'clic gauche à moins de 2 m : mise à mort (tête visée : décapitation) · ' + K.KeyQ + ' : coup normal'], [K.KeyX, 'lancer un kunai sur le membre visé · 5 par vague, un de plus à chaque mise à mort'], [K.KeyG, 'gourde de saké, une par vague : rend de la vie et du sang, calme les saignements'], ['Dash', 'traverser un coup au dernier moment : esquive parfaite, le temps ralentit'], [K.KeyZ, 'bourrade de la main libre : repousse, casse la garde, interrompt un coup'], [K.KeyC, 'coup de pied retourné : on tourne le dos, on saute, le pied part à hauteur de tête · il projette l\'ennemi au loin, et celui-ci renverse ceux qu\'il percute'], ['Jambes (arme 9)', 'style sans arme, uniquement les pieds · clic gauche enchaîne coup de face, circulaire et balayage (jambes visées : balayage qui fait tomber) · coup lourd, après un dash ou en courant : retourné qui projette'], ['Combos', 'douze enchaînements de coups légers et lourds : la liste reste affichée à droite pendant le combat'], ['Claymore', 'coup lourd maintenu jusqu\'à l\'éclat doré : tranche un membre en un seul coup'], ['Arme et lame', 'en donjon, on les choisit au menu puis entre deux vagues ; bac à sable : ' + K.KeyE + ' change de lame, 1 à 8 d\'arme, ' + K.KeyF + ' ramasse'], [K.KeyY, 'vue à la première personne ou à la troisième personne'], ['Tab', 'afficher ou masquer l\'interface complète : aide, combos, armes, état du corps'], ['Échap', 'pause']];
     const h = rows.map((r) => '<dt>' + k(r[0]) + '</dt><dd>' + r[1] + '</dd>').join('');
     $('m-keys').innerHTML = h; $('p-keys').innerHTML = h;
     const chip = (c) => (c === 'L' ? '<i class="l"></i>' : c === 'H' ? '<i class="h"></i>' : '<em>' + { P: 'Parade', D: 'Dash', S: 'Course' }[c] + '</em>');
@@ -6875,7 +6936,7 @@ const Game = {
   },
 
   start(mode, wave) {
-    Sfx.init(); this.clearWorld(); this.mode = mode; this.state = 'play'; this.stats = { kills: 0, limbs: 0, parries: 0, fin: 0, brk: 0, water: 0, kunai: 0, best: 0 }; this.t = 0;
+    Sfx.init(); this.clearWorld(); Gfx.eyeClear(); this.mode = mode; this.state = 'play'; this.stats = { kills: 0, limbs: 0, parries: 0, fin: 0, brk: 0, water: 0, kunai: 0, best: 0 }; this.t = 0;
     Env.load(mode === 'dungeon' ? this.arenaFor(wave || 1) : this.sbArena);
     this.spawnPlayer(0, mode !== 'dungeon' ? -3 : 0, 0); Player.reset(this.player); $('tuto').hidden = true;
     if (!Save.data.hudFull && !CFG.touch && mode !== 'tuto') HUD.feed('Tab : afficher l\'interface complète');
@@ -7020,7 +7081,7 @@ const Game = {
     else if (res === 'sever') { msg = zn === 'torso' ? null : 'tranché' + e + ' !'; this.stats.limbs += F.isPlayer ? 1 : 0; }
     if (F.isPlayer && res !== 'none') { Player.streak++; Player.streakT = this.t; this.stats.best = Math.max(this.stats.best, Player.streak); } else if (V.isPlayer) Player.streak = 0;
     if (F.isPlayer) { if (res === 'sever' && zn === 'torso') HUD.feed('Corps tranché en deux !', 'good'); else if (msg) HUD.feed(ZONE_FR[zn] + ' : ' + msg, res === 'sever' || res === 'fatal' ? 'good' : ''); this.lastSeen = V; this.lastSeenT = this.t; }
-    else if (V.isPlayer) { this.hurt = Math.min(1, this.hurt + 0.55); HUD.lens(res === 'sever' ? 4 : 2); if (msg) HUD.feed('Votre ' + ZONE_FR[zn].toLowerCase() + ' : ' + msg, 'bad'); }
+    else if (V.isPlayer) { this.hurt = Math.min(1, this.hurt + 0.55); HUD.lens(res === 'sever' ? 4 : 2); if (zn === 'head') Gfx.eyeHit(res === 'cut1' ? 0.6 : 1); if (msg) HUD.feed('Votre ' + ZONE_FR[zn].toLowerCase() + ' : ' + msg, 'bad'); }
   },
   onArmorBreak(F, zn) { if (!F.isPlayer) this.stats.brk++; const t = ARMOR_PIECE[zn] + (zn.startsWith('leg') ? ' brisée' : ' brisé'); if (F.isPlayer) HUD.feed('Votre ' + t + ' : cette partie n\'est plus protégée', 'bad'); else if (F.team !== 'player') HUD.feed(F.name + ' : ' + t, 'good'); },
   // esquive parfaite : on traverse un coup pendant le dash
@@ -7199,6 +7260,7 @@ const Game = {
       Fx.update(dt);
     }
     Env.update(dt); Crows.update(dt);
+    { const P = this.player; Gfx.eyeUpdate(dt, P && !P.dead && P.zones.head.state === 'ok' ? Math.min(1, P.zones.head.bleed || 0) : 0); }
     Gfx.scene.updateMatrixWorld(); Clip.update(); Gfx.render(dt); Input.end();
   },
   // pour les essais automatiques : avance la simulation de n pas

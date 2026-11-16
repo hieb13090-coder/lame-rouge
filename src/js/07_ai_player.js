@@ -106,14 +106,14 @@ const LOCK_FR = { head: 'Tête', armSL: 'Bras à gauche', armSR: 'Bras à droite
 const Player = {
   yaw: 0, pitch: 0.22, dist: 3.5, pivot: new V3(0, 1.5, 0), target: null, hlF: null, combo: 0, lastAtk: -9, near: null, sprint: false, lock: 0, tapC: '', tapT: -9, fov: 62, parryT: -9, dashT: -9, streak: 0, streakT: -9, seq: '', chainT: -9, fin: null, finK: 0,
   _o: new V3(), _e: new V3(), _c1: new V3(), _c2: new V3(), _a: new V3(), _b: new V3(), _pt: new V3(), _d: new V3(),
-  reset(P) { this.yaw = P.yaw; this.pitch = 0.22; this.pivot.set(P.pos.x, 1.5, P.pos.z); this.target = null; this.combo = 0; this.parryT = this.dashT = this.streakT = this.chainT = -9; this.streak = 0; this.seq = ''; this.fin = null; this.finK = 0; },
+  reset(P) { this.fps = !!Save.data.fps; this.yaw = P.yaw; this.pitch = this.fps ? 0.05 : 0.22; this.pivot.set(P.pos.x, 1.5, P.pos.z); this.target = null; this.combo = 0; this.parryT = this.dashT = this.streakT = this.chainT = -9; this.streak = 0; this.seq = ''; this.fin = null; this.finK = 0; },
   setLock(i) { this.lock = (i + LOCKS.length) % LOCKS.length; Sfx.ui(); HUD.zone(); Game.stats.lock = (Game.stats.lock || 0) + 1; },
   update(dt) {
     const P = Game.player; if (!P) return;
     const sens = 0.0024 * (Save.data.sens || 1);
-    this.yaw -= Input.mx * sens; this.pitch = clamp(this.pitch + Input.my * sens, -0.22, 1.1);
+    this.yaw -= Input.mx * sens; this.pitch = clamp(this.pitch + Input.my * sens, this.fps ? -1.1 : -0.22, this.fps ? 1.25 : 1.1);
     const ar = (Input.down('ArrowLeft') ? 1 : 0) - (Input.down('ArrowRight') ? 1 : 0), au = (Input.down('ArrowDown') ? 1 : 0) - (Input.down('ArrowUp') ? 1 : 0);
-    this.yaw += ar * 2.4 * dt; this.pitch = clamp(this.pitch + au * 1.4 * dt, -0.22, 1.1);
+    this.yaw += ar * 2.4 * dt; this.pitch = clamp(this.pitch + au * 1.4 * dt, this.fps ? -1.1 : -0.22, this.fps ? 1.25 : 1.1);
     // visée : molette ou R pour choisir le membre, T pour revenir au viseur libre
     if (Input.wheel) this.setLock(this.lock + (Input.wheel > 0 ? 1 : -1));
     if (Input.hit('KeyR') || Input.hit('ZoneNext')) this.setLock(this.lock + 1);
@@ -181,6 +181,7 @@ const Player = {
     this.near = null; let nd = 1.7 * 1.7;
     for (const b of Game.drops) { if (b.dead || !b.ps.length || (Game.mode === 'dungeon' && Game.owns(b.weaponId))) continue; const cx = (b.ps[0].x + b.ps[1].x) / 2, cz = (b.ps[0].z + b.ps[1].z) / 2, d = (cx - P.pos.x) ** 2 + (cz - P.pos.z) ** 2; if (d < nd) { nd = d; this.near = b; } }
     if (this.near && Input.hit('KeyF')) Game.pickup(this.near);
+    if (Input.hit('KeyY')) this.setFps(!this.fps);
   },
   swap(P, id) { if (P.busy || id === P.weaponId) return; P.equip(id); P.setElement(Game.elem); Game.weapon = id; Sfx.ui(); HUD.weapons(); },
   // combos : G = coup léger, L = coup lourd. Le préfixe vient de ce qui précède : parade (P), dash (D), course (S) ou la suite en cours
@@ -321,8 +322,30 @@ const Player = {
       this.hlF = best.F; best.F.hl = best.zone; this.target = best; Game.lastSeen = best.F; Game.lastSeenT = Game.t;
     } else this.clearHl();
   },
+  // vue à la première personne : la caméra prend la place des yeux ; la tête du joueur est masquée pour ne pas boucher la vue
+  setFps(on) {
+    this.fps = !!on; Save.data.fps = this.fps; Save.store(); $('fpsdot').hidden = !this.fps;
+    if (this.fps) this.pitch = clamp(this.pitch - 0.2, -1.1, 1.25); else this.pitch = clamp(this.pitch, -0.22, 1.1);
+    HUD.feed(this.fps ? 'Vue à la première personne (' + KeyName.KeyY + ' pour revenir)' : 'Vue à la troisième personne');
+  },
   camera(dt) {
     const P = Game.player, cam = Gfx.camera; if (!P) return;
+    const eyes = this.fps && !P.rag && !P.dead && P.seg.head.state === 'ok' && P.J.neck;
+    if (this.headHid !== P || !!eyes !== !!this.headOff) { if (this.headHid && this.headHid !== P && this.headHid.J.neck) this.headHid.J.neck.visible = true; if (P.J.neck) P.J.neck.visible = !eyes; this.headHid = P; this.headOff = !!eyes; }
+    $('fpsdot').hidden = !eyes;
+    if (eyes) {
+      const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), cp = Math.cos(this.pitch), sp = Math.sin(this.pitch), h = P.J.neck.getWorldPosition(this._e2 || (this._e2 = new V3())), s = P.scale, sh = Gfx.shake;
+      if (sh > 0) Gfx.shake = Math.max(0, sh - dt * 1.6);
+      cam.position.set(h.x + fx * 0.11 * s + rndS(sh) * 0.06, h.y + 0.13 * s + rndS(sh) * 0.05, h.z + fz * 0.11 * s + rndS(sh) * 0.06);
+      this._d.set(cam.position.x + fx * cp, cam.position.y - sp, cam.position.z + fz * cp); cam.lookAt(this._d);
+      this.pivot.set(P.pos.x, 1.5 * s, P.pos.z);                                 // pour repartir en douceur si on repasse à la 3e personne
+      if (Gfx.punch > 0) Gfx.punch = Math.max(0, Gfx.punch - dt * 2.6);
+      const ft = 78 + (P.action.type === 'dodge' ? 8 : this.sprint ? 5 : 0) - 8 * Gfx.punch; this.fov += (ft - this.fov) * (1 - Math.exp(-10 * dt));
+      if (cam.near !== 0.04) { cam.near = 0.04; cam.updateProjectionMatrix(); }
+      if (Math.abs(cam.fov - this.fov) > 0.05) { cam.fov = this.fov; cam.updateProjectionMatrix(); }
+      Sfx.ear.copy(cam.position); return;
+    }
+    if (cam.near !== 0.08) { cam.near = 0.08; cam.updateProjectionMatrix(); }
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -fz, rz = fx, cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
     const ty = P.rag ? 0.75 : 1.5 * P.scale, k = 1 - Math.exp(-16 * dt);
     this.pivot.x += (P.pos.x + rx * 0.5 - this.pivot.x) * k; this.pivot.y += (ty - this.pivot.y) * k; this.pivot.z += (P.pos.z + rz * 0.5 - this.pivot.z) * k;

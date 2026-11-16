@@ -143,7 +143,7 @@ const Save = {
 };
 
 // ---------------------------------------------------------------- entrées
-const KeyName = { KeyW: 'Z', KeyA: 'Q', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyF: 'F', KeyH: 'H', KeyM: 'M', KeyN: 'N', KeyB: 'B', KeyV: 'V', KeyK: 'K', KeyL: 'L', KeyI: 'I', KeyP: 'P', KeyR: 'R', KeyT: 'T', KeyQ: 'A', KeyG: 'G', KeyC: 'C', KeyO: 'O', KeyX: 'X', KeyZ: 'W', KeyJ: 'J' };
+const KeyName = { KeyW: 'Z', KeyA: 'Q', KeyS: 'S', KeyD: 'D', KeyE: 'E', KeyF: 'F', KeyH: 'H', KeyM: 'M', KeyN: 'N', KeyB: 'B', KeyV: 'V', KeyK: 'K', KeyL: 'L', KeyI: 'I', KeyP: 'P', KeyR: 'R', KeyT: 'T', KeyQ: 'A', KeyG: 'G', KeyC: 'C', KeyO: 'O', KeyX: 'X', KeyZ: 'W', KeyJ: 'J', KeyY: 'Y' };
 (function guessLayout() {
   const fr = /^fr/i.test(navigator.language || 'fr');
   if (!fr) { KeyName.KeyW = 'W'; KeyName.KeyA = 'A'; KeyName.KeyQ = 'Q'; KeyName.KeyZ = 'Z'; }

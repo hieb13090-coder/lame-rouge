@@ -293,6 +293,7 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
 @media (max-height:660px){ #h-combos:not(.force){display:none} }
 @media (max-height:520px){ #h-body ul{display:none} .keys{display:none} }
 @media (prefers-reduced-motion:reduce){ #banner,#h-feed p{animation-duration:.01s;animation-iteration-count:1} #lens i::after{animation:none} #banner{animation:none} }
+  #fpsdot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: rgba(240, 232, 214, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); pointer-events: none; }
 </style>
 
 <div id="app">
@@ -322,7 +323,7 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
     <div id="cross"><i></i><b id="pring"></b><b id="charge"><i></i></b><span id="seq"></span><span id="aim"></span><div id="edge"></div></div>
     <div id="h-boss"></div>
     <div id="tuto" hidden><small id="tu-n"></small><b id="tu-t"></b><p id="tu-d"></p><em id="tu-hint">Entrée : passer cette étape</em><button id="tu-skip" type="button" hidden>Passer</button></div>
-    <div id="combo"></div><div id="streak"></div>
+    <div id="combo"></div><div id="streak"></div><div id="fpsdot" hidden></div>
     <div id="prompt" hidden></div>
     <div id="banner" hidden><b></b><small></small></div>
   </div>
