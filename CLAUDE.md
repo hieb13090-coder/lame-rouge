@@ -54,6 +54,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 | `08c_powers.js` | `Soul`, `Powers`, `POWERS` | Parade parfaite, armes arrachées, pouvoirs feu, glace, foudre |
 | `08d_tuto.js` | `Tuto` | Tutoriel |
 | `08e_net.js` | `NetLink`, `Net` | Duel 1v1 en ligne |
+| `08f_throw.js` | `Throw` | Lancer son arme (U) : se plante dans le corps, le sol ou un mur ; récupération avec F (arrachée de la plaie sur un vivant) |
 | `09_game.js` | `HUD`, `Game`, `ATTRS` | Modes, vagues, progression, interface, boucle principale |
 
 `src/head.html` contient tout le HTML (menus, panneaux, HUD, commandes tactiles) et le CSS. Les couleurs de l'interface sont des variables `:root` : `--beni`, `--washi`, `--sumi`, `--ai`, `--kincha`, `--koori`, `--matcha`, `--rai`, `--hi`. Les tailles de texte : `--t-xs` à `--t-xl`. Les polices : `--f-display` (Shippori Mincho B1) et `--f-ui` (Zen Kaku Gothic New).
@@ -103,6 +104,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 - **Style « Jambes » :** arme `legs` de type `fist`. Le clic gauche enchaîne coup de face, circulaire et balayage. Le coup lourd déclenche le retourné. Mains dans le dos, petits rebonds. Il porte l'élément choisi (touche E) : feu, glace ou foudre enveloppent la jambe, s'appliquent aux touches et donnent le pouvoir correspondant ; en acier, pas d'effet. Finisher : talon abattu (`A.stomp`, `advanceStomp`/`stompGeo`/`stompHit` dans 08_armor_water.js), tête visée = crâne écrasé. Les bras pendant un coup de pied viennent de `kickGeo` (`aR`, `aL`, `arms`).
 
 - **Vue à la première personne :** touche Y (`Player.setFps`, mémorisée dans `Save.data.fps`). La caméra se place aux yeux (articulation `neck`), la tête du joueur est masquée (`J.neck.visible`), retour automatique à la 3e personne si le joueur est mort ou décapité. En garde, mains et arme remontent dans le champ et suivent le regard (bloc « première personne » dans `Fighter.arms`, visuel seulement).
+- **Arme lancée :** touche U (`Throw.throw`). Lames et lances partent pointe en avant ; si elles touchent, le maillage de l'arme est accroché au maillage du segment touché (`t.state = 'stuck'`), sinon planté dans le sol ou un mur. Masses et bâtons tournoient, renversent et retombent. Le joueur passe aux poings ; F récupère (`Throw.recover`). Si le corps porteur disparaît, l'arme retombe au sol. Désactivé en duel (pas encore transmis).
 - **Vision ensanglantée :** coup reçu à la tête → `Gfx.eyeHit`, sang qui coule sur l'écran (canvas `Gfx.eye`, réfracté dans la passe finale), sèche en quelques secondes, continue de couler tant que la tête saigne.
 
 ### Duel en ligne (08e_net.js)

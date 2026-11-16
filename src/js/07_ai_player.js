@@ -180,7 +180,8 @@ const Player = {
     }
     this.near = null; let nd = 1.7 * 1.7;
     for (const b of Game.drops) { if (b.dead || !b.ps.length || (Game.mode === 'dungeon' && Game.owns(b.weaponId))) continue; const cx = (b.ps[0].x + b.ps[1].x) / 2, cz = (b.ps[0].z + b.ps[1].z) / 2, d = (cx - P.pos.x) ** 2 + (cz - P.pos.z) ** 2; if (d < nd) { nd = d; this.near = b; } }
-    if (this.near && Input.hit('KeyF')) Game.pickup(this.near);
+    if (Input.hit('KeyF')) { if (this.near) Game.pickup(this.near); else if (Throw.near) Throw.recover(P); }
+    if (Input.hit('KeyU')) Throw.throw(P);
     if (Input.hit('KeyY')) this.setFps(!this.fps);
   },
   swap(P, id) { if (P.busy || id === P.weaponId) return; P.equip(id); P.setElement(Game.elem); Game.weapon = id; Sfx.ui(); HUD.weapons(); },
