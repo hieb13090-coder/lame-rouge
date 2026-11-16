@@ -373,7 +373,15 @@ const Combat = {
     const pierce = heavy || A.full || A.exec, pc = V.armorAt(zn), red = pc ? V.armor.red * (pierce ? 0.5 : 1) : 0, stop = pc && Math.random() < red;
     if (!V.immortal) V.hp -= dmg * (1 - red);
     V.flash = 0.12;
+    const bigBlunt = type === 'blunt' && (heavy || A.kv === 'k540' || A.kv === 'round' || A.kv === 'low' || W.id === 'staff' || (A.kind === 'punch' && A.mult > 1.2));
+    if (bigBlunt && !stop && /^(arm|leg)/.test(zn) && V.zones[zn].state === 'ok' && V.zones[zn].stage === 1) V.zones[zn].stage = 2;      // gros coup contondant : l'os cède au deuxième impact
     let res = stop ? 'armor' : V.wound(zn, sg, p, type, dir, A.full || A.exec);
+    if (type === 'blunt' && res === 'disable') {                               // os brisé : coup de poing, de pied ou de bâton
+      const what = zn.startsWith('arm') ? 'bras' : zn.startsWith('leg') ? 'jambe' : zn === 'torso' ? 'côtes' : 'crâne';
+      if (/^(arm|leg)/.test(zn)) V.fracture(zn);
+      if (F.isPlayer) Game.onCombo(F, zn === 'torso' ? 'Côtes brisées !' : zn === 'head' ? 'Crâne fêlé !' : 'Os brisé !');
+      else if (V.isPlayer) HUD.feed('Os brisé : ' + what, 'bad');
+    }
     if (pc) V.armorHit(zn, pierce ? 2 : 1, dir);
     if (A.double && res === 'cut1') { const r2 = V.wound(zn, sg, p, type, dir); if (r2 === 'cut2' || r2 === 'sever') res = r2; }      // riposte : deux crans d'un coup
     this.feedback(F, V, zn, res, p, dir, type, false);

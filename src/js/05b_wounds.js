@@ -66,6 +66,19 @@ Object.assign(Fighter.prototype, {
     return 'disable';
   },
 
+  // fracture ouverte : l'os perce la peau à l'endroit du choc, le membre ne répond plus (il pend ou fait boiter)
+  fracture(zn) {
+    const z = this.zones[zn]; if (z.broken || z.state === 'severed') return; z.broken = true;
+    Sfx.crack(this.zonePoint(zn, _w1)); Gfx.shake = Math.max(Gfx.shake, this.isPlayer ? 0.08 : 0.03);
+    if (z.anchor && Models.boneGeo.length) {
+      const b = new THREE.Mesh(Models.boneGeo[Math.floor(Math.random() * Models.boneGeo.length)], Models.mat.bone), a = z.anchor.position, out = _w1.set(a.x, -0.35 * Math.hypot(a.x, a.z), a.z);
+      if (out.lengthSq() < 1e-6) out.set(0, 0, 1); out.normalize();
+      b.scale.set(0.014, 0.075, 0.014); b.quaternion.setFromUnitVectors(_w2.set(0, 1, 0), out); b.position.copy(out).multiplyScalar(0.02); b.castShadow = true;
+      z.anchor.add(b); z.bone = b;
+    }
+    z.bleed0 = z.bleed = Math.max(z.bleed, 1.1 * this.bleedRes);              // fracture ouverte : elle saigne
+  },
+
   sever(zn, dirW) {
     const z = this.zones[zn];
     this.breakArmor(zn, dirW);                                                  // la pièce d'armure part avec le membre
