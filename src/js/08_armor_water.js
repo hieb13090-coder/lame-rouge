@@ -241,6 +241,7 @@ const Water = {
 Object.assign(Combat, {
   // lame levée à deux mains, plantée vers le bas
   advanceFinish(F, A, dt) {
+    if (A.stomp) { this.advanceStomp(F, A, dt); return; }
     const V = A.finV, P = A.pose;
     if (A.phase === 0) {
       if (V && !V.gone) { const c = A.behead ? V.seg.head : V.seg.chest; A.point.copy(c.a).lerp(c.b, 0.5); }
@@ -262,6 +263,72 @@ Object.assign(Combat, {
     P.twist = 0; P.hip = 0; P.lean = A.phase === 0 ? -0.2 * smooth(A.pt / A.wind) : lerp(-0.2, 0.5, s); P.crouch = lerp(0, 0.3, s) + (A.phase === 0 ? -0.03 * smooth(A.pt / A.wind) : 0);
     P.fwd = A.phase === 0 ? -0.03 * smooth(A.pt / A.wind) : lerp(-0.03, 0.07, smooth(s));      // il se hisse sur l'armé, puis tout son poids descend avec la lame
     if (A.phase === 2) { P.lean *= A.w; P.crouch *= A.w; P.fwd *= A.w; }
+  },
+  // style Jambes : on s'approche, la jambe tendue monte au-dessus de la tête, puis le talon s'abat sur le corps à terre
+  advanceStomp(F, A, dt) {
+    const V = A.finV, P = A.pose;
+    if (A.phase === 0) {
+      if (V && !V.gone) { const c = A.behead ? V.seg.head : V.seg.chest; A.point.copy(c.a).lerp(c.b, 0.5); }
+      const k = Math.min(1, dt * 10); F.pos.x += (A.sx - F.pos.x) * k; F.pos.z += (A.sz - F.pos.z) * k;
+      F.yawT = Math.atan2(A.point.x - F.pos.x, A.point.z - F.pos.z);
+      A.w = 1; A.s = 0;
+      if (A.pt >= A.wind) { A.phase = 1; A.pt = 0; Sfx.whoosh(F.pos, true); F.trail = Trails.get(F.element !== 'steel' ? ELEMENTS[F.element].color : 0xffffff, 0.7); }
+    } else if (A.phase === 1) {
+      A.s = Math.min(1, A.pt / A.act);
+      if (!A.struck && A.s >= 0.9) this.stompHit(F, A);
+      if (A.pt >= A.act) { A.s = 1; A.phase = 2; A.pt = 0; if (F.trail) { F.trail.stop(); F.trail = null; } }
+    } else if (A.pt >= A.rec) { F.idle(); return; }
+    const K = A.K = this.stompGeo(F, A, A.K || { footK: new V3(), footS: new V3(), hipK: new V3() });
+    if (F.trail && A.phase === 1) F.trail.push(this._b.copy(K.footK).lerp(K.hipK, 0.35), K.footK);
+    if (A.phase === 1 && F.element !== 'steel') { if (F.element === 'fire') Fx.flame(K.footK, 4, 0.24); else if (F.element === 'ice') Fx.frost(K.footK, 3); else Fx.volt(K.footK, 3); }
+    P.twist = 0; P.hip = 0; P.side = 0; P.lean = K.lean; P.crouch = K.crouch; P.fwd = K.fwd;
+  },
+  stompGeo(F, A, o) {
+    const sc = F.scale, ls = A.kleg === 'R' ? -1 : 1, LEG = (D.thigh + D.shin) * 0.99, ph = A.phase;
+    const r = ph === 0 ? smooth(clamp(A.pt / A.wind, 0, 1)) : 1, s = ph === 1 ? A.s : ph === 2 ? 1 : 0, q = ph === 2 ? clamp(A.pt / A.rec, 0, 1) : 0, back = ph === 2 ? smooth(clamp((q - 0.35) / 0.65, 0, 1)) : 0;
+    const Y = o.yaw = F.yaw, cy = Math.cos(Y), sy = Math.sin(Y), dx = (A.point.x - F.pos.x) / sc, dz = (A.point.z - F.pos.z) / sc;
+    const cr = ph === 0 ? 0.03 * r : ph === 1 ? lerp(0.03, 0.24, s * s) : 0.24 * (1 - back);
+    o.crouch = cr; o.jump = 0; o.side = 0; o.lean = ph === 0 ? -0.26 * r : ph === 1 ? lerp(-0.26, 0.32, s * s) : 0.32 * (1 - back); o.fwd = ph === 1 ? 0.05 * s : ph === 2 ? 0.05 * (1 - back) : 0;
+    o.arms = ph === 2 ? 1 - back : 1;
+    const aR = o.aR || (o.aR = new V3()), aL = o.aL || (o.aL = new V3()); aR.set(-0.08, -0.03, -0.16); aL.set(0.08, -0.03, -0.16);      // mains dans le dos jusqu'au bout
+    const hx = ls * D.hipX, hy = D.hipH + D.hipY - cr * 0.8, L = this._c;
+    const tx = dx * cy - dz * sy, tz = dx * sy + dz * cy, ty = Math.max(0.1, A.point.y / sc);   // cible dans le repère du combattant
+    const rx = tx - hx, ry = ty - hy, rh = Math.hypot(rx, tz), rt = Math.min(LEG, Math.hypot(rh, ry)), et = Math.atan2(ry, rh), top = 1.3;
+    if (ph === 0) { const e = lerp(-PI / 2, top, r), k = Math.max(0, Math.sin(PI * r)) * 0.25; L.set(lerp(ls * 0.13, hx, r), hy + LEG * Math.sin(e) - k * 0.2, Math.max(0, LEG * Math.cos(e)) * 0.85 + k * 0.1); }      // genou qui s'arme puis jambe tendue vers le ciel
+    else {
+      const k = ph === 1 ? s * s : 1, e = lerp(top, et, k), rad = lerp(LEG, rt, k), fx = lerp(hx, tx, k), hz = Math.cos(e) * rad;
+      L.set(fx, hy + Math.sin(e) * rad, ph === 1 ? hz * 0.85 + 0.15 * k * tz : hz);
+      if (ph === 1 && k >= 0.999 || ph === 2) L.set(fx, Math.max(0.08, hy + Math.sin(et) * rt), Math.cos(et) * rt);
+      if (back > 0) L.set(lerp(L.x, ls * 0.13, back), lerp(L.y, 0, back) + 0.12 * Math.sin(PI * back), lerp(L.z, 0.04, back));
+    }
+    const toW = (v, x, y, z) => v.set(F.pos.x + (x * cy + z * sy) * sc, y * sc, F.pos.z + (-x * sy + z * cy) * sc);
+    toW(o.footK, L.x, L.y, L.z); o.airK = L.y > 0.03; o.pitchK = o.airK ? (ph === 1 ? -0.5 : 0.4) : 0;
+    toW(o.hipK, hx, hy, 0);
+    toW(o.footS, -ls * 0.13, 0, -0.1); o.airS = false; o.pitchS = 0;
+    return o;
+  },
+  _c: new V3(),
+  stompHit(F, A) {
+    A.struck = true; const V = A.finV; if (!V || V.gone) return;
+    const head = A.behead, sg = head ? V.seg.head : V.seg.chest, p = this._a.copy(sg.a).lerp(sg.b, 0.45), dir = this._d.set(0, -1, 0), up = this._up.set(-Math.sin(F.yaw) * 0.25, 1, -Math.cos(F.yaw) * 0.25);
+    Sfx.thud(p, 1); Sfx.crack(p); Sfx.kiai(F.pos); Fx.dust(this._b.set(p.x, 0.05, p.z), 12, 0.4); Gfx.shake = Math.max(Gfx.shake, F.isPlayer ? 0.16 : 0.06);
+    Drops.burst(p, up, head ? 40 : 24, 4.5, 1.6, 0.03); Fx.bloodMist(p, up, head ? 12 : 6); Blood.pool(p.x, p.z, 0.4, 0.8);
+    if (F.element === 'fire') { Fx.flame(p, 14, 0.4); Sfx.fire(p); } else if (F.element === 'ice') { Fx.shards(p, 16); Sfx.ice(p); } else if (F.element === 'bolt') { Fx.volt(p, 16); Sfx.zap(p); }
+    if (F.isPlayer) HUD.lens(2);
+    Game.hitStop(0.14, 0.32); Game.killSlow = Math.max(Game.killSlow, 0.24);
+    if (V.net) return;                                                          // duel : chez lui, mon talon le tue s'il est encore à terre
+    if (!V.dead) {
+      if (V.boss) {
+        if (!V.immortal) V.hp -= V.hpMax * 0.4;
+        if (V.zones.torso.stage < 2 && V.zones.torso.state === 'ok') V.wound('torso', sg, p, 'blunt', dir);
+        Sfx.scream(p, V.pitch, false); if (V.hp <= 0) V.kill('écrasé');
+      } else {
+        const zn = head ? 'head' : 'torso'; if (V.zones[zn].state === 'ok' && V.zones[zn].stage < 2) V.wound(zn, sg, p, 'blunt', dir);
+        if (F.element !== 'steel' && V.zones[zn].state !== 'severed') V.applyElem(zn, F.element);
+        Sfx.scream(p, V.pitch, true); V.kill(head ? 'crâne écrasé' : 'écrasé');
+      }
+    }
+    Game.onFinish(F, V);
   },
   finishHit(F, A) {
     A.struck = true; const V = A.finV; if (!V || V.gone) return;

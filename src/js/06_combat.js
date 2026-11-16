@@ -61,7 +61,8 @@ const Combat = {
     F.root.rotation.y = F.yaw; F.root.updateMatrixWorld(true);
     if (A.finisher) {                                                          // mise à mort : on vient se placer au-dessus du corps
       A.wind = 0.46; A.act = 0.16; A.rec = 0.38;                                // une seconde de jeu, plus le ralenti à l'impact : environ 1,2 s à l'écran
-      const dx = A.point.x - F.pos.x, dz = A.point.z - F.pos.z, d = Math.hypot(dx, dz) || 1, want = 0.72 * F.scale;
+      A.stomp = !!W.legs; if (A.stomp) { A.kleg = F.legOK.R || !F.legOK.L ? 'R' : 'L'; A.wind = 0.5; A.act = 0.13; A.rec = 0.45; }      // style Jambes : talon levé au-dessus de la tête, abattu sur le corps
+      const dx = A.point.x - F.pos.x, dz = A.point.z - F.pos.z, d = Math.hypot(dx, dz) || 1, want = (A.stomp ? 0.5 : 0.72) * F.scale;
       A.sx = A.point.x - (dx / d) * want; A.sz = A.point.z - (dz / d) * want;
       this.plan(F, A); return true;
     }
@@ -218,7 +219,7 @@ const Combat = {
 
   pose(F) {
     const A = F.action, o = this._pose;
-    if (A.kind === 'kick') return null;
+    if (A.kind === 'kick' || A.stomp) return null;
     const s = A.phase === 0 ? 0 : A.phase === 1 ? A.s : A.sEnd;
     this.sample(F, A, s, A.cur);
     o.hand = A.cur.hand; o.dir = A.cur.dir; o.edge = A.cur.edge; o.w = A.w; o.side = A.kind === 'punch' ? A.punch : F.heldSide; o.off = null;

@@ -249,13 +249,13 @@ const Player = {
     return best;
   },
   finisher(P, V) {
-    const head = LOCKS[this.lock] === 'head' && !V.boss && P.W.kind !== 'fist' && P.W.kind !== 'spear' && !P.W.blunt && V.zones.head.state !== 'severed';      // tête visée : on la tranche
+    const head = LOCKS[this.lock] === 'head' && !V.boss && (P.W.legs || (P.W.kind !== 'fist' && P.W.kind !== 'spear' && !P.W.blunt)) && V.zones.head.state !== 'severed';      // tête visée : on la tranche (ou on l'écrase au talon)
     const c = head ? V.seg.head : V.seg.chest, pt = this._pt.copy(c.a).lerp(c.b, 0.5);
     if (!Combat.start(P, { victim: V.rag ? null : V, body: V.rag || null, zone: head ? 'head' : 'torso', point: pt }, { finisher: true, finV: V, behead: head })) return;
     if (!V.rag && V.action.type === 'down') V.action.dur = Math.max(V.action.dur, V.action.t + 1.3);      // il ne se relève pas pendant qu'on l'achève
     this.seq = ''; this.lastAtk = Game.t; P.inv = Math.max(P.inv, 1.15);
     Game.watchT = 1.5; Game.watchBack = 0.35;                                  // les autres reculent d'un pas et regardent ; ils reprennent 0,5 s après
-    HUD.combo(head ? 'Décapitation' : 'Mise à mort');
+    HUD.combo(P.W.legs ? (head ? 'Talon fracassant' : 'Talon du bourreau') : head ? 'Décapitation' : 'Mise à mort');
   },
   // le clic maintenu transforme le coup en coup lourd : on regarde si cela complète un combo
   upgrade(P, A) {

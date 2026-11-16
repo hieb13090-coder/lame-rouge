@@ -272,7 +272,7 @@ class Fighter {
       G.on = false; G.amp = 0;
       this.root.updateMatrixWorld(true);
     } else {
-      const KK = A.type === 'attack' && A.kind === 'kick' && A.K ? A.K : null;      // coup de pied retourné : les pieds suivent le saut, pas la marche
+      const KK = A.type === 'attack' && (A.kind === 'kick' || A.stomp) && A.K ? A.K : null;      // coup de pied retourné : les pieds suivent le saut, pas la marche
       if (KK) this.kickFeet(KK, A); else this.stepFeet(dt, sp, vx, vz, fx, fz, rx, rz);
       // bassin : il monte et descend avec la foulée, se déporte sur la jambe d'appui, roule et pivote avec les pas
       const a = G.amp, rw = G.run, c1 = Math.cos(TAU * (G.ph - G.beta * 0.5)), c0 = Math.cos(TAU * G.ph), big = s > 1.08 ? 1.5 : 1;
@@ -498,7 +498,7 @@ class Fighter {
     if (W.legs && !block && !sprint && (A.type === 'idle' || A.type === 'dodge')) {         // style « Jambes » : mains croisées dans le dos, on se balance sur la pointe des pieds
       const sw = 0.01 * Math.sin(this.t * 2.1 + this.id); tg.R.set(-0.08, -0.03 + sw, -0.16); tg.L.set(0.08, -0.03 - sw, -0.16);
     }
-    if (A.type === 'attack' && A.kind === 'kick' && A.K) {                     // coup de pied : bras ouverts pour tourner, en balancier, ou dans le dos (Jambes)
+    if (A.type === 'attack' && (A.kind === 'kick' || A.stomp) && A.K) {        // coup de pied : bras ouverts pour tourner, en balancier, ou dans le dos (Jambes)
       const k = A.K.arms; tg.R.lerp(A.K.aR, k); tg.L.lerp(A.K.aL, k); if (!fist && A.kv === 'k540') dir.lerp(_f1.set(-0.3 * mx, -0.35, -0.88), k);
     }
     if (A.type === 'stagger' || A.type === 'stun') { const j = A.type === 'stun' ? 0.05 : 0; tg.R.x -= 0.1; tg.R.y += 0.08 + rndS(j); tg.L.x += 0.1; tg.L.y += 0.06 + rndS(j); dir.x += 0.5 * mx; dir.z -= 0.2; }
