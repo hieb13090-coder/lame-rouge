@@ -1938,6 +1938,7 @@ const Env = {
     this.unload(); this.id = id; const A = ARENAS[id]; this.bx = A.bx; this.bz = A.bz;
     this.group = new THREE.Group(); Gfx.scene.add(this.group);
     if (id === 'bridge') this.bridge(this.group); else this.court(this.group, id === 'fortress');
+    Atmo.build(this.group, id);                                                // brume, halos, poussière, ombres de contact (02c_atmo.js)
     Gfx.palette(PALETTES[id]); this.sunBase = PALETTES[id].sun[1];
     Sfx.setAmb(id);
   },
@@ -1945,6 +1946,7 @@ const Env = {
     if (!this.group) return;
     Gfx.scene.remove(this.group);
     this.group.traverse((o) => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) { if (m.map) m.map.dispose(); if (m.normalMap) m.normalMap.dispose(); if (m.roughnessMap) m.roughnessMap.dispose(); m.dispose(); } });
+    Atmo.mist.length = 0; Atmo.halos.length = 0; Atmo.glows.length = 0; Atmo.motes = null; Atmo.blobs = null;
     this.group = null; this.obst.length = 0; this.gates.length = 0; this.lamps.length = 0; this.fires.length = 0; this.bigFires.length = 0; this.rain = null;
   },
   lamp(g, x, y, z, hex, base, dist) { if (CFG.lite && this.lamps.length >= 2) return; const L = new THREE.PointLight(col(hex), base, dist || 16, 2); L.position.set(x, y, z); g.add(L); this.lamps.push({ L, base, ph: Math.random() * 9 }); },
@@ -2029,7 +2031,7 @@ const Env = {
       const banM = new THREE.MeshStandardMaterial({ map: canvasTex(banC), roughness: 0.9, side: THREE.DoubleSide });
       for (let k = 0; k < 4; k++) for (let i = -1; i <= 1; i += 2) { const a = k * PI / 2, b = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 3.4), banM); b.position.set(Math.sin(a) * (B - 0.06) + Math.cos(a) * i * 8.5, 3.6, Math.cos(a) * (B - 0.06) - Math.sin(a) * i * 8.5); b.rotation.y = a + PI; g.add(b); }
     }
-    g.add(new THREE.Mesh(mergePlain(glow), new THREE.MeshBasicMaterial({ color: col(burn ? 0xff8a2a : 0xffc98a), fog: false })));
+    g.add(new THREE.Mesh(mergePlain(glow), Atmo.glowMat(burn ? 0xff8a2a : 0xffc98a, burn)));
     const dm = new THREE.Mesh(mergeGeos(deco), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.02 })); dm.castShadow = true; dm.receiveShadow = true; g.add(dm);
     if (burn) this.sky(g, { grad: [[0, '#0a0403'], [0.34, '#1c0906'], [0.47, '#6a2109'], [0.5, '#a8420f'], [0.53, '#150806'], [1, '#080403']], clouds: ['30,20,18', 60, 0.3], stars: false, moon: 0xa8402a, halo: '255,110,60', ridge: ['#1a0a06', '#0b0504'], glow: true });
     else this.sky(g, { grad: [[0, '#03050b'], [0.36, '#0a1020'], [0.49, '#1d2740'], [0.52, '#0d111c'], [1, '#06080d']], clouds: ['120,138,178', 40, 0.13], stars: true, moon: 0xf2f5fb, halo: '190,208,255', ridge: ['#0e1422', '#070a11'] });
@@ -2058,7 +2060,7 @@ const Env = {
     }
     for (let z = -len / 2 + 3; z < len / 2; z += 6.5) deco.push(gBox(2 * bx + 0.8, 0.5, 0.5, dk, 0, -0.35, z), gCyl(0.3, 0.34, 12, dk, -bx + 0.6, -6.4, z, 0, 0, 0, 8), gCyl(0.3, 0.34, 12, dk, bx - 0.6, -6.4, z, 0, 0, 0, 8));
     [[-4.4, 7.5], [4.3, -8.5]].forEach(([x, z]) => { deco.push(gBox(0.9, 0.8, 0.9, 0x3a2a1c, x, 0.4, z, 0, 0.3, 0), gBox(0.7, 0.6, 0.7, 0x33251a, x * 0.97, 1.1, z + 0.1, 0, -0.4, 0)); this.obst.push({ x, z, r: 0.75 }); });
-    g.add(new THREE.Mesh(mergePlain(glow), new THREE.MeshBasicMaterial({ color: col(0xffc98a), fog: false })));
+    g.add(new THREE.Mesh(mergePlain(glow), Atmo.glowMat(0xffc98a, false)));
     const dm = new THREE.Mesh(mergeGeos(deco), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.02, envMapIntensity: 1.2 })); dm.castShadow = true; dm.receiveShadow = true; g.add(dm);
     const water = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ color: col(0x0a141c), roughness: 0.12, metalness: 0.4, envMapIntensity: 1.6 })); water.rotation.x = -PI / 2; water.position.y = -11; g.add(water);
     this.sky(g, { grad: [[0, '#07090c'], [0.35, '#141a22'], [0.49, '#2b3440'], [0.52, '#10141a'], [1, '#07090c']], clouds: ['150,160,175', 110, 0.2], stars: false, moon: null, ridge: ['#11161d', '#0a0d12'] });
@@ -2070,7 +2072,7 @@ const Env = {
   },
 
   update(dt) {
-    this.t += dt;
+    this.t += dt; Atmo.update(dt);
     for (const l of this.lamps) l.L.intensity = l.base * (0.88 + 0.08 * Math.sin(this.t * 9 + l.ph) + 0.06 * Math.sin(this.t * 23.7 + l.ph * 2));
     for (const f of this.fires) if (Math.random() < dt * (CFG.lite ? 12 : 34)) { Fx.flame(f, 1, 0.42); if (Math.random() < 0.08) Fx.add.emit(f.x + rndS(0.1), f.y, f.z + rndS(0.1), rndS(0.4), rnd(1, 2.4), rndS(0.4), rnd(0.8, 1.8), 0.035, 0.01, 1, 0.6, 0.2, 1, -0.4, 0.4); }
     for (const f of this.bigFires) if (Math.random() < dt * (CFG.lite ? 14 : 44)) { Fx.add.emit(f.x + rndS(0.8), f.y + rndS(0.2), f.z + rndS(0.6), rndS(0.5), rnd(1.2, 3), rndS(0.5), rnd(0.35, 0.8), rnd(0.5, 1.0), 0.05, 1, rnd(0.3, 0.55), 0.08, 0.6, -0.8, 0.6); if (Math.random() < 0.3) Fx.nor.emit(f.x + rndS(0.6), f.y + 1.2, f.z + rndS(0.6), rndS(0.4), rnd(1.2, 2.2), rndS(0.4), rnd(2, 3.6), 0.6, 2.4, 0.06, 0.055, 0.05, 0.32, -0.15, 0.3); }
@@ -2592,6 +2594,110 @@ const Tex = {
       o[3] = (0.45 + 0.4 * edge + (fib - 0.5) * 0.25 - line * 0.12) * (1 - pool) + 0.5 * pool;
       o[4] = (0.3 + line * 0.2 + knot * 0.15) * (1 - pool) + 0.05 * pool;
     });
+  },
+};
+
+// ======================================================================
+// 02c — atmosphère : brume au ras du sol qui dérive, halos autour des lanternes et des feux,
+// poussière en suspension, ombres de contact sous les combattants (ils « pèsent » sur le sol).
+// Tout est construit dans le groupe de l'arène : Env.unload le libère avec le reste.
+// ======================================================================
+const ATMO = {
+  dojo:     { mist: 0x8a9cc4, a: 0.26, layers: [0.12, 0.42, 0.85], wind: [0.25, 0.08], motes: 0xc8d4f0 },
+  bridge:   { mist: 0x9aa6b8, a: 0.2, layers: [0.1, 0.4, 0.9, 1.5], wind: [0.12, 0.5], motes: 0 },
+  fortress: { mist: 0x7a5a48, a: 0.24, layers: [0.15, 0.55, 1.1], wind: [-0.3, 0.15], motes: 0 },
+};
+const Atmo = {
+  mist: [], halos: [], glows: [], motes: null, blobs: null, t: 0,
+  radial(stops) {                                                                 // petite texture de dégradé radial
+    const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    for (const [o, s] of stops) g.addColorStop(o, s); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+  },
+  // braises, papier des lanternes : une couleur qui bouge (veines plus chaudes, palpitation) au lieu d'un aplat
+  glowMat(hex, ember) {
+    const m = new THREE.ShaderMaterial({
+      fog: false, uniforms: { t: { value: 0 }, c: { value: new THREE.Color(hex) }, e: { value: ember ? 1 : 0 } },      // couleur sRGB, linéarisée dans le shader
+      vertexShader: 'varying vec3 wp; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); wp = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: [
+        'uniform float t, e; uniform vec3 c; varying vec3 wp;',
+        'float h(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }',
+        'float n(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y), mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z); }',
+        'void main(){',
+        '  float v = n(wp * 7.0 + vec3(0.0, -t * 0.8, t * 0.3)) * 0.6 + n(wp * 17.0 + t * 1.3) * 0.4;',
+        '  vec3 col = e > 0.5 ? mix(vec3(0.35, 0.03, 0.0), mix(c, vec3(1.0, 0.95, 0.7), smoothstep(0.62, 0.9, v)), smoothstep(0.25, 0.6, v))',
+        '                     : c * (0.82 + 0.3 * v) * (0.94 + 0.06 * sin(t * 9.0 + wp.x * 3.0));',
+        '  gl_FragColor = vec4(pow(col, vec3(2.2)), 1.0);',
+        '}'].join('\n'),
+    });
+    this.glows.push(m); return m;
+  },
+  build(g, id) {
+    this.mist.length = 0; this.halos.length = 0; this.motes = null; this.blobs = null;
+    const P = ATMO[id]; if (!P) return;
+    const span = 2 * Math.max(Env.bx, Env.bz) + 24, layers = CFG.lite ? [P.layers[1]] : P.layers;
+    // --- brume : plans superposés, bruit fractal qui dérive avec le vent, s'efface près de la caméra et au loin
+    layers.forEach((y, i) => {
+      const m = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, fog: false,
+        uniforms: { t: { value: 0 }, a: { value: P.a * (CFG.lite ? 1.6 : 1) * (1 - i * 0.12) }, col: { value: col(P.mist) }, wind: { value: new THREE.Vector2(P.wind[0] * (1 + i * 0.4), P.wind[1] * (1 - i * 0.2)) }, sd: { value: i * 17.3 } },
+        vertexShader: 'varying vec3 wp; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); wp = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+        fragmentShader: [
+          'uniform float t, a, sd; uniform vec3 col; uniform vec2 wind; varying vec3 wp;',
+          'float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+          'float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }',
+          'void main(){',
+          '  vec2 p = wp.xz * 0.11 + wind * t + sd;',
+          '  float v = n(p) * 0.55 + n(p * 2.1 - wind * t * 0.7) * 0.3 + n(p * 4.3) * 0.15;',
+          '  float d = length(wp.xz - cameraPosition.xz), k = smoothstep(0.32, 0.8, v) * smoothstep(1.2, 5.5, d) * (1.0 - smoothstep(26.0, 40.0, d));',
+          '  k *= smoothstep(0.0, 1.6, abs(cameraPosition.y - wp.y));',
+          '  gl_FragColor = vec4(col, a * k);',
+          '}'].join('\n'),
+      });
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(span, span), m); pl.rotation.x = -PI / 2; pl.position.y = y; pl.renderOrder = 2; g.add(pl); this.mist.push(m);
+    });
+    // --- halos : la lumière qui bave dans l'air humide autour des sources
+    const tex = this.radial([[0, 'rgba(255,255,255,0.9)'], [0.18, 'rgba(255,255,255,0.35)'], [0.5, 'rgba(255,255,255,0.08)'], [1, 'rgba(255,255,255,0)']]);
+    const halo = (p, hex, s, op, lamp) => {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: col(hex), transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending, fog: true }));
+      sp.position.copy(p); sp.scale.set(s, s, 1); g.add(sp); this.halos.push({ sp, op, lamp, ph: Math.random() * 9 });
+    };
+    for (const l of Env.lamps) halo(l.L.position, l.L.color.getHex(), 2.4, 0.32, l);
+    for (const f of Env.fires) halo(f, 0xff8a3a, 1.6, 0.4, null);
+    for (const f of Env.bigFires) halo(f, 0xff6a20, 2.8, 0.22, null);
+    // --- poussière en suspension qui accroche la lumière
+    if (P.motes && !CFG.lite) {
+      const n = 260, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = rndS(Env.bx); pos[i * 3 + 1] = rnd(0.3, 4.5); pos[i * 3 + 2] = rndS(Env.bz); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: col(P.motes), size: 0.035, map: tex, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+      g.add(pts); this.motes = { pts, pos, n };
+    }
+    // --- ombres de contact : une tache sombre et douce sous chaque combattant debout
+    const bt = this.radial([[0, 'rgba(0,0,0,0.75)'], [0.45, 'rgba(0,0,0,0.38)'], [1, 'rgba(0,0,0,0)']]);
+    const bm = new THREE.MeshBasicMaterial({ map: bt, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const bg = new THREE.PlaneGeometry(1, 1).rotateX(-PI / 2);
+    this.blobs = new THREE.InstancedMesh(bg, bm, 32); this.blobs.count = 0; this.blobs.frustumCulled = false; this.blobs.renderOrder = 1; g.add(this.blobs);
+  },
+  _m: new THREE.Matrix4(), _q: new THREE.Quaternion(), _p: new THREE.Vector3(), _s: new THREE.Vector3(), _up: new THREE.Vector3(0, 1, 0),
+  update(dt) {
+    this.t += dt;
+    for (const m of this.mist) m.uniforms.t.value = this.t;
+    for (const m of this.glows) m.uniforms.t.value = this.t;
+    for (const h of this.halos) h.sp.material.opacity = h.op * (h.lamp ? h.lamp.L.intensity / h.lamp.base : 0.85 + 0.12 * Math.sin(this.t * 11 + h.ph) + 0.05 * Math.sin(this.t * 27 + h.ph));
+    if (this.motes) {
+      const M = this.motes, p = M.pos, t = this.t;
+      for (let i = 0; i < M.n; i++) { const j = i * 3; p[j] += Math.sin(t * 0.3 + i) * 0.05 * dt; p[j + 1] += Math.sin(t * 0.21 + i * 1.7) * 0.04 * dt; p[j + 2] += Math.cos(t * 0.27 + i * 0.6) * 0.05 * dt; }
+      M.pts.geometry.attributes.position.needsUpdate = true;
+    }
+    if (this.blobs && typeof Game !== 'undefined' && Game.fighters) {
+      let k = 0;
+      for (const F of Game.fighters) {
+        if (k >= 32 || F.gone || F.rag || !F.root) continue;
+        const air = Math.max(0, (F.J && F.J.hips ? F.J.hips.getWorldPosition(this._p).y : 0.9 * F.scale) - 0.95 * F.scale), s = F.scale * (0.95 - Math.min(0.5, air * 0.6));
+        this._p.set(F.pos.x, 0.012, F.pos.z); this._s.set(s, 1, s * 0.85); this._q.setFromAxisAngle(this._up, F.yaw);
+        this._m.compose(this._p, this._q, this._s); this.blobs.setMatrixAt(k++, this._m);
+      }
+      this.blobs.count = k; this.blobs.instanceMatrix.needsUpdate = true;
+    }
   },
 };
 

@@ -42,6 +42,7 @@ Ce fichier donne tout le contexte du projet à l'assistant qui travaille sur ce 
 | `01_audio.js` | `Sfx` | Sons synthétisés en Web Audio, aucun fichier |
 | `02_gfx.js` | `Gfx`, `PALETTES`, `Env`, `Fx`, `Trails`, `Blood`, `Drops`, `Clip` | Moteur de rendu, lumières par arène, construction des arènes, particules, sang, traînées |
 | `02b_textures.js` | `Tex` | Textures procédurales des arènes (dalles, sable, muraille, planches, terre brûlée) : couleur, relief et rugosité en une passe |
+| `02c_atmo.js` | `Atmo`, `ATMO` | Brume au sol, halos des lumières, poussière, ombres de contact, braises et lanternes animées (shader) |
 | `03_physics.js` | `Phys` | Verlet : ragdolls, membres tranchés, armes au sol |
 | `04_models.js` | `D`, `SEGS`, `Models` | Modèles procéduraux des combattants et des armes, plaies et os |
 | `05_fighter.js` | `Fighter`, `POSE` | Squelette, marche avec pieds posés (IK des jambes), bras, dash, animation |

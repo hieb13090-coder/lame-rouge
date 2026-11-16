@@ -153,6 +153,7 @@ const Env = {
     this.unload(); this.id = id; const A = ARENAS[id]; this.bx = A.bx; this.bz = A.bz;
     this.group = new THREE.Group(); Gfx.scene.add(this.group);
     if (id === 'bridge') this.bridge(this.group); else this.court(this.group, id === 'fortress');
+    Atmo.build(this.group, id);                                                // brume, halos, poussière, ombres de contact (02c_atmo.js)
     Gfx.palette(PALETTES[id]); this.sunBase = PALETTES[id].sun[1];
     Sfx.setAmb(id);
   },
@@ -160,6 +161,7 @@ const Env = {
     if (!this.group) return;
     Gfx.scene.remove(this.group);
     this.group.traverse((o) => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) { if (m.map) m.map.dispose(); if (m.normalMap) m.normalMap.dispose(); if (m.roughnessMap) m.roughnessMap.dispose(); m.dispose(); } });
+    Atmo.mist.length = 0; Atmo.halos.length = 0; Atmo.glows.length = 0; Atmo.motes = null; Atmo.blobs = null;
     this.group = null; this.obst.length = 0; this.gates.length = 0; this.lamps.length = 0; this.fires.length = 0; this.bigFires.length = 0; this.rain = null;
   },
   lamp(g, x, y, z, hex, base, dist) { if (CFG.lite && this.lamps.length >= 2) return; const L = new THREE.PointLight(col(hex), base, dist || 16, 2); L.position.set(x, y, z); g.add(L); this.lamps.push({ L, base, ph: Math.random() * 9 }); },
@@ -244,7 +246,7 @@ const Env = {
       const banM = new THREE.MeshStandardMaterial({ map: canvasTex(banC), roughness: 0.9, side: THREE.DoubleSide });
       for (let k = 0; k < 4; k++) for (let i = -1; i <= 1; i += 2) { const a = k * PI / 2, b = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 3.4), banM); b.position.set(Math.sin(a) * (B - 0.06) + Math.cos(a) * i * 8.5, 3.6, Math.cos(a) * (B - 0.06) - Math.sin(a) * i * 8.5); b.rotation.y = a + PI; g.add(b); }
     }
-    g.add(new THREE.Mesh(mergePlain(glow), new THREE.MeshBasicMaterial({ color: col(burn ? 0xff8a2a : 0xffc98a), fog: false })));
+    g.add(new THREE.Mesh(mergePlain(glow), Atmo.glowMat(burn ? 0xff8a2a : 0xffc98a, burn)));
     const dm = new THREE.Mesh(mergeGeos(deco), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.02 })); dm.castShadow = true; dm.receiveShadow = true; g.add(dm);
     if (burn) this.sky(g, { grad: [[0, '#0a0403'], [0.34, '#1c0906'], [0.47, '#6a2109'], [0.5, '#a8420f'], [0.53, '#150806'], [1, '#080403']], clouds: ['30,20,18', 60, 0.3], stars: false, moon: 0xa8402a, halo: '255,110,60', ridge: ['#1a0a06', '#0b0504'], glow: true });
     else this.sky(g, { grad: [[0, '#03050b'], [0.36, '#0a1020'], [0.49, '#1d2740'], [0.52, '#0d111c'], [1, '#06080d']], clouds: ['120,138,178', 40, 0.13], stars: true, moon: 0xf2f5fb, halo: '190,208,255', ridge: ['#0e1422', '#070a11'] });
@@ -273,7 +275,7 @@ const Env = {
     }
     for (let z = -len / 2 + 3; z < len / 2; z += 6.5) deco.push(gBox(2 * bx + 0.8, 0.5, 0.5, dk, 0, -0.35, z), gCyl(0.3, 0.34, 12, dk, -bx + 0.6, -6.4, z, 0, 0, 0, 8), gCyl(0.3, 0.34, 12, dk, bx - 0.6, -6.4, z, 0, 0, 0, 8));
     [[-4.4, 7.5], [4.3, -8.5]].forEach(([x, z]) => { deco.push(gBox(0.9, 0.8, 0.9, 0x3a2a1c, x, 0.4, z, 0, 0.3, 0), gBox(0.7, 0.6, 0.7, 0x33251a, x * 0.97, 1.1, z + 0.1, 0, -0.4, 0)); this.obst.push({ x, z, r: 0.75 }); });
-    g.add(new THREE.Mesh(mergePlain(glow), new THREE.MeshBasicMaterial({ color: col(0xffc98a), fog: false })));
+    g.add(new THREE.Mesh(mergePlain(glow), Atmo.glowMat(0xffc98a, false)));
     const dm = new THREE.Mesh(mergeGeos(deco), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.02, envMapIntensity: 1.2 })); dm.castShadow = true; dm.receiveShadow = true; g.add(dm);
     const water = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ color: col(0x0a141c), roughness: 0.12, metalness: 0.4, envMapIntensity: 1.6 })); water.rotation.x = -PI / 2; water.position.y = -11; g.add(water);
     this.sky(g, { grad: [[0, '#07090c'], [0.35, '#141a22'], [0.49, '#2b3440'], [0.52, '#10141a'], [1, '#07090c']], clouds: ['150,160,175', 110, 0.2], stars: false, moon: null, ridge: ['#11161d', '#0a0d12'] });
@@ -285,7 +287,7 @@ const Env = {
   },
 
   update(dt) {
-    this.t += dt;
+    this.t += dt; Atmo.update(dt);
     for (const l of this.lamps) l.L.intensity = l.base * (0.88 + 0.08 * Math.sin(this.t * 9 + l.ph) + 0.06 * Math.sin(this.t * 23.7 + l.ph * 2));
     for (const f of this.fires) if (Math.random() < dt * (CFG.lite ? 12 : 34)) { Fx.flame(f, 1, 0.42); if (Math.random() < 0.08) Fx.add.emit(f.x + rndS(0.1), f.y, f.z + rndS(0.1), rndS(0.4), rnd(1, 2.4), rndS(0.4), rnd(0.8, 1.8), 0.035, 0.01, 1, 0.6, 0.2, 1, -0.4, 0.4); }
     for (const f of this.bigFires) if (Math.random() < dt * (CFG.lite ? 14 : 44)) { Fx.add.emit(f.x + rndS(0.8), f.y + rndS(0.2), f.z + rndS(0.6), rndS(0.5), rnd(1.2, 3), rndS(0.5), rnd(0.35, 0.8), rnd(0.5, 1.0), 0.05, 1, rnd(0.3, 0.55), 0.08, 0.6, -0.8, 0.6); if (Math.random() < 0.3) Fx.nor.emit(f.x + rndS(0.6), f.y + 1.2, f.z + rndS(0.6), rndS(0.4), rnd(1.2, 2.2), rndS(0.4), rnd(2, 3.6), 0.6, 2.4, 0.06, 0.055, 0.05, 0.32, -0.15, 0.3); }
