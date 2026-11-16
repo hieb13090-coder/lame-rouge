@@ -116,6 +116,19 @@ const Models = {
   // --- géométries d'un type de combattant (mises en cache)
   fighter(typeId) {
     if (this.cache[typeId]) return this.cache[typeId];
+    if (typeof BLENDER_FIGHTER !== 'undefined' && BLENDER_FIGHTER[typeId]) {       // personnage modélisé dans Blender (04c_perso.js)
+      try {
+        const raw = (s) => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u.buffer; };
+        const geo = (m) => {
+          const p = new Int16Array(raw(m.p)), n = new Int8Array(raw(m.n)), c = new Uint8Array(raw(m.c)), P = new Float32Array(p.length), N = new Float32Array(n.length), C = new Float32Array(c.length);
+          for (let i = 0; i < p.length; i++) { P[i] = p[i] / 8000; N[i] = n[i] / 127; C[i] = c[i] / 255; }
+          const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(N, 3)); g.setAttribute('color', new THREE.BufferAttribute(C, 3)); g.computeBoundingSphere(); return g;
+        };
+        const B = BLENDER_FIGHTER[typeId], G = {};
+        for (const key of ['pelvis', 'chest', 'head', 'uarm', 'farm', 'thigh', 'shin', 'foot']) G[key] = geo(B[key]);
+        this.cache[typeId] = G; return G;
+      } catch (e) { /* modèle illisible : on garde le modèle en code */ }
+    }
     const k = TYPES[typeId].look, G = {}, hak = this.hakama(typeId), robe = hak && !k.armor, N = 14;
     const steel = 0x8a9198, lacq = 0x17171b, gold = 0x9a7a2a, cream = 0xcfc6b2, sk = k.skin;
     const dk = (hex, f) => new THREE.Color(hex).multiplyScalar(f).getHex();
