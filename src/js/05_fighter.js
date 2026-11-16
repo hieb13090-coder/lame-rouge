@@ -501,6 +501,12 @@ class Fighter {
     if (A.type === 'attack' && (A.kind === 'kick' || A.stomp) && A.K) {        // coup de pied : bras ouverts pour tourner, en balancier, ou dans le dos (Jambes)
       const k = A.K.arms; tg.R.lerp(A.K.aR, k); tg.L.lerp(A.K.aL, k); if (!fist && A.kv === 'k540') dir.lerp(_f1.set(-0.3 * mx, -0.35, -0.88), k);
     }
+    if (this.isPlayer && typeof Player !== 'undefined' && Player.headOff && !W.legs && !sprint && (A.type === 'idle' || A.type === 'block' || (A.type === 'attack' && A.phase === 0 && A.kind !== 'kick'))) {
+      // première personne : garde remontée et avancée pour rester dans le champ, et qui suit le regard (on baisse les yeux, les mains descendent)
+      const k = A.type === 'attack' ? 1 - A.w : 1, up = (fist ? 0.15 : 0.24) - clamp(Player.pitch, -0.6, 1) * 0.22, fw = fist ? 0.13 : 0.16;
+      tg.R.y += up * k; tg.R.z += fw * k; tg.L.y += up * k; tg.L.z += fw * k;
+      if (!fist) dir.lerp(_f1.set(-0.18 * mx, 0.78, 0.6), 0.35 * k);
+    }
     if (A.type === 'stagger' || A.type === 'stun') { const j = A.type === 'stun' ? 0.05 : 0; tg.R.x -= 0.1; tg.R.y += 0.08 + rndS(j); tg.L.x += 0.1; tg.L.y += 0.06 + rndS(j); dir.x += 0.5 * mx; dir.z -= 0.2; }
     dir.normalize();
     const a = 1 - Math.exp(-20 * dt);
