@@ -468,6 +468,21 @@ class Fighter {
       if (carry) tg[off].set(0.23 * mx, 0.07 - 0.12 * sn * mx, 0.05 - 0.26 * sn * mx);
       else { const k = clamp((w - 0.4) / 0.6, 0, 1); tg[off].set(lerp(-0.18, 0.21, k) * mx, lerp(0.1, 0.06, k) - 0.05 * k * sn * mx, lerp(0.16, 0.07, k) - (0.05 + 0.13 * k) * w * sn * mx); }
     }
+    // vraies animations (Mixamo, 04b_mocap.js) : à l'arrêt, en marche et en course, les mains suivent le mouvement capturé
+    //   arme à deux mains : garde, marche et course au sabre ; mains nues : balancier des bras en marche et en course
+    if (typeof MOCAP !== 'undefined' && A.type === 'idle' && !carry) {
+      const twoS = !fist && W.hands === 2 && W.kind !== 'spear', amp = G.amp || 0, run = G.run || 0;
+      if (twoS || (fist && amp > 0.02)) {
+        const M = this._mo || (this._mo = { a: new Float32Array(6), b: new Float32Array(6), c: new Float32Array(6), r: new Float32Array(6) });
+        const smp = (c, ph, o) => { const n = c.length / 6, t = (((ph % 1) + 1) % 1) * n, a = Math.floor(t) % n, b = (a + 1) % n, u = t - Math.floor(t); for (let i = 0; i < 6; i++) o[i] = c[a * 6 + i] * (1 - u) + c[b * 6 + i] * u; return o; };
+        if (twoS) { smp(MOCAP.gsidle, this.t / 2 + this.id * 0.37, M.a); smp(MOCAP.gswalk, G.ph, M.b); smp(MOCAP.gsrun, G.ph, M.c); }
+        else { smp(MOCAP.walk, G.ph, M.b); smp(MOCAP.run, G.ph, M.c); }
+        for (let i = 0; i < 6; i++) { const mv = M.b[i] * (1 - run) + M.c[i] * run; M.r[i] = twoS ? M.a[i] * (1 - amp) + mv * amp : mv; }
+        const k = twoS ? 1 : amp, im = main === 'R' ? 0 : 3, io = 3 - im, sx = main === 'R' ? 1 : -1;      // capture faite main droite : miroir pour un gaucher
+        tg[main].lerp(_f1.set(M.r[im] * sx, M.r[im + 1], M.r[im + 2]), k); tg[off].lerp(_f2.set(M.r[io] * sx, M.r[io + 1], M.r[io + 2]), k);
+        if (twoS && !block) { _f1.sub(_f2); if (_f1.lengthSq() > 1e-4) dir.lerp(_f1.normalize(), k); }      // la lame prolonge la poignée tenue à deux mains
+      }
+    }
     for (const side of ['L', 'R']) if (!this.armOK[side] && this.armHas[side]) {            // bras gelé, paralysé ou brisé : il pend
       const sx = side === 'L' ? 1 : -1, fr = this.zones['arm' + side].frozen > 0;
       tg[side].set(sx * (fr ? 0.3 : 0.24), fr ? -0.1 : -0.17, fr ? 0.1 : 0.03 + 0.03 * Math.sin(this.t * 3.1 + sx));
