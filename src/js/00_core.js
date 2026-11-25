@@ -168,7 +168,8 @@ const Input = {
   clear() { this.k = {}; this.lmb = false; this.rmb = false; this.stick.x = this.stick.y = 0; this.stick.id = -1; this.look.id = -1; const s = $('t-stick'); if (s) s.style.display = 'none'; this.end(); },
   lock() {
     if (CFG.touch || !this.canvas.requestPointerLock) return;                 // un refus n'est pas définitif : on réessaie au clic suivant
-    try { const r = this.canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { this.lockFail = true; }); } catch (e) { this.lockFail = true; }
+    const fail = (e) => { this.lockFail = true; this.lockWhy = e && e.name; };
+    try { const r = this.canvas.requestPointerLock(); if (r && r.catch) r.catch(fail); } catch (e) { fail(e); }
   },
   unlock() { try { if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* rien */ } },
   init(canvas) {
@@ -185,7 +186,7 @@ const Input = {
     document.addEventListener('mouseleave', () => { this.inside = false; });
     document.addEventListener('pointerlockchange', () => {
       const was = this.locked;
-      this.locked = document.pointerLockElement === canvas;
+      this.locked = document.pointerLockElement === canvas; if (this.locked) { this.lockFail = false; this.lockWhy = null; }
       if (was && !this.locked && this.active && this.onPause) this.onPause();
     });
     document.addEventListener('pointerlockerror', () => { this.lockFail = true; });
@@ -196,6 +197,10 @@ const Input = {
       this.px = (e.clientX - r.left) / Math.max(1, r.width); this.py = (e.clientY - r.top) / Math.max(1, r.height);
       this.inside = this.px >= 0 && this.px <= 1 && this.py >= 0 && this.py <= 1;
     });
+    document.addEventListener('mousedown', (e) => {                         // un clic n'importe où pendant la partie (texte du HUD compris) recapture la souris
+      if (!this.active || this.locked || e.target === canvas || (e.target.closest && e.target.closest('button, input, select, a, .panel'))) return;
+      this.lock();
+    }, true);
     canvas.addEventListener('mousedown', (e) => {
       if (!this.active) return;
       e.preventDefault(); canvas.focus();

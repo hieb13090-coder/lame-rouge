@@ -97,6 +97,11 @@ const HUD = {
     this.html('edge', ek);
     if (this.c.kn !== Kunai.n) { this.c.kn = Kunai.n; const el = $('h-kunai'), tb = $('t-kunai'); if (el) { el.lastElementChild.textContent = 'Kunai ' + Kunai.n; el.classList.toggle('cd', Kunai.n === 0); } if (tb) tb.textContent = 'Kunai ' + Kunai.n; }
     if (this.c.fl !== Game.flask) { this.c.fl = Game.flask; const el = $('h-flask'); if (el) { el.lastElementChild.textContent = 'Gourde ' + Game.flask; el.classList.toggle('cd', Game.flask === 0); } }
+    { const free = !CFG.touch && Input.active && !Input.locked, ifr = window.top !== window, k = free ? (ifr ? 2 : Input.lockFail ? 3 : 1) : 0;      // souris pas capturée : on le dit, au lieu de laisser le curseur filer hors de la fenêtre
+      if (this.c.lh !== k) { this.c.lh = k; const el = $('lockhint'); el.hidden = !k;
+        if (k === 1) el.innerHTML = '<b>Clique dans le jeu</b> pour capturer la souris';
+        else if (k === 2) el.innerHTML = 'Ici la souris ne peut pas être capturée. Joue sur <b>hieb13090-coder.github.io/lame-rouge</b>';
+        else if (k === 3) el.innerHTML = 'Le navigateur a refusé de capturer la souris : <b>clique dans le jeu</b> (la fenêtre doit être au premier plan)'; } }
     const nb = Player.near, fv = Player.fin && !A.finisher ? Player.fin : null, th = !nb && Throw.near;
     this.show('prompt', (!!nb || !!fv || !!th) && !CFG.touch); if (CFG.touch) { this.show('t-pick', !!nb); this.text('t-atk', fv ? 'Achever' : 'Frapper'); }
     const pn = POWERS[Powers.element(P)], wn = Water.cd > 0 ? Math.ceil(Water.cd) : 0, wk = pn + wn;

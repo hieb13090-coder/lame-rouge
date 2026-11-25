@@ -294,6 +294,8 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
 @media (max-height:520px){ #h-body ul{display:none} .keys{display:none} }
 @media (prefers-reduced-motion:reduce){ #banner,#h-feed p{animation-duration:.01s;animation-iteration-count:1} #lens i::after{animation:none} #banner{animation:none} }
   #fpsdot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: rgba(240, 232, 214, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); pointer-events: none; }
+  #lockhint { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); max-width: 90%; padding: 8px 14px; border-radius: 6px; background: rgba(12, 10, 9, 0.82); color: var(--washi); font: 500 var(--t-s, 14px) var(--f-ui); text-align: center; pointer-events: none; }
+  #lockhint b { color: var(--kincha); }
 </style>
 
 <div id="app">
@@ -324,7 +326,7 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
     <div id="h-boss"></div>
     <div id="tuto" hidden><small id="tu-n"></small><b id="tu-t"></b><p id="tu-d"></p><em id="tu-hint">Entrée : passer cette étape</em><button id="tu-skip" type="button" hidden>Passer</button></div>
     <div id="combo"></div><div id="streak"></div><div id="fpsdot" hidden></div>
-    <div id="prompt" hidden></div>
+    <div id="prompt" hidden></div><div id="lockhint" hidden></div>
     <div id="banner" hidden><b></b><small></small></div>
   </div>
 

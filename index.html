@@ -294,6 +294,8 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
 @media (max-height:520px){ #h-body ul{display:none} .keys{display:none} }
 @media (prefers-reduced-motion:reduce){ #banner,#h-feed p{animation-duration:.01s;animation-iteration-count:1} #lens i::after{animation:none} #banner{animation:none} }
   #fpsdot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: rgba(240, 232, 214, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); pointer-events: none; }
+  #lockhint { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); max-width: 90%; padding: 8px 14px; border-radius: 6px; background: rgba(12, 10, 9, 0.82); color: var(--washi); font: 500 var(--t-s, 14px) var(--f-ui); text-align: center; pointer-events: none; }
+  #lockhint b { color: var(--kincha); }
 </style>
 
 <div id="app">
@@ -324,7 +326,7 @@ i.h{background:var(--beni);transform:rotate(45deg) scale(.86)}
     <div id="h-boss"></div>
     <div id="tuto" hidden><small id="tu-n"></small><b id="tu-t"></b><p id="tu-d"></p><em id="tu-hint">Entrée : passer cette étape</em><button id="tu-skip" type="button" hidden>Passer</button></div>
     <div id="combo"></div><div id="streak"></div><div id="fpsdot" hidden></div>
-    <div id="prompt" hidden></div>
+    <div id="prompt" hidden></div><div id="lockhint" hidden></div>
     <div id="banner" hidden><b></b><small></small></div>
   </div>
 
@@ -1570,7 +1572,8 @@ const Input = {
   clear() { this.k = {}; this.lmb = false; this.rmb = false; this.stick.x = this.stick.y = 0; this.stick.id = -1; this.look.id = -1; const s = $('t-stick'); if (s) s.style.display = 'none'; this.end(); },
   lock() {
     if (CFG.touch || !this.canvas.requestPointerLock) return;                 // un refus n'est pas définitif : on réessaie au clic suivant
-    try { const r = this.canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { this.lockFail = true; }); } catch (e) { this.lockFail = true; }
+    const fail = (e) => { this.lockFail = true; this.lockWhy = e && e.name; };
+    try { const r = this.canvas.requestPointerLock(); if (r && r.catch) r.catch(fail); } catch (e) { fail(e); }
   },
   unlock() { try { if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* rien */ } },
   init(canvas) {
@@ -1587,7 +1590,7 @@ const Input = {
     document.addEventListener('mouseleave', () => { this.inside = false; });
     document.addEventListener('pointerlockchange', () => {
       const was = this.locked;
-      this.locked = document.pointerLockElement === canvas;
+      this.locked = document.pointerLockElement === canvas; if (this.locked) { this.lockFail = false; this.lockWhy = null; }
       if (was && !this.locked && this.active && this.onPause) this.onPause();
     });
     document.addEventListener('pointerlockerror', () => { this.lockFail = true; });
@@ -1598,6 +1601,10 @@ const Input = {
       this.px = (e.clientX - r.left) / Math.max(1, r.width); this.py = (e.clientY - r.top) / Math.max(1, r.height);
       this.inside = this.px >= 0 && this.px <= 1 && this.py >= 0 && this.py <= 1;
     });
+    document.addEventListener('mousedown', (e) => {                         // un clic n'importe où pendant la partie (texte du HUD compris) recapture la souris
+      if (!this.active || this.locked || e.target === canvas || (e.target.closest && e.target.closest('button, input, select, a, .panel'))) return;
+      this.lock();
+    }, true);
     canvas.addEventListener('mousedown', (e) => {
       if (!this.active) return;
       e.preventDefault(); canvas.focus();
@@ -6911,6 +6918,11 @@ const HUD = {
     this.html('edge', ek);
     if (this.c.kn !== Kunai.n) { this.c.kn = Kunai.n; const el = $('h-kunai'), tb = $('t-kunai'); if (el) { el.lastElementChild.textContent = 'Kunai ' + Kunai.n; el.classList.toggle('cd', Kunai.n === 0); } if (tb) tb.textContent = 'Kunai ' + Kunai.n; }
     if (this.c.fl !== Game.flask) { this.c.fl = Game.flask; const el = $('h-flask'); if (el) { el.lastElementChild.textContent = 'Gourde ' + Game.flask; el.classList.toggle('cd', Game.flask === 0); } }
+    { const free = !CFG.touch && Input.active && !Input.locked, ifr = window.top !== window, k = free ? (ifr ? 2 : Input.lockFail ? 3 : 1) : 0;      // souris pas capturée : on le dit, au lieu de laisser le curseur filer hors de la fenêtre
+      if (this.c.lh !== k) { this.c.lh = k; const el = $('lockhint'); el.hidden = !k;
+        if (k === 1) el.innerHTML = '<b>Clique dans le jeu</b> pour capturer la souris';
+        else if (k === 2) el.innerHTML = 'Ici la souris ne peut pas être capturée. Joue sur <b>hieb13090-coder.github.io/lame-rouge</b>';
+        else if (k === 3) el.innerHTML = 'Le navigateur a refusé de capturer la souris : <b>clique dans le jeu</b> (la fenêtre doit être au premier plan)'; } }
     const nb = Player.near, fv = Player.fin && !A.finisher ? Player.fin : null, th = !nb && Throw.near;
     this.show('prompt', (!!nb || !!fv || !!th) && !CFG.touch); if (CFG.touch) { this.show('t-pick', !!nb); this.text('t-atk', fv ? 'Achever' : 'Frapper'); }
     const pn = POWERS[Powers.element(P)], wn = Water.cd > 0 ? Math.ceil(Water.cd) : 0, wk = pn + wn;
